@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { Bot, Plus, Settings, Calendar, ArrowLeft, Upload, MessageSquare, Tag, Users, ToggleLeft, ToggleRight } from "lucide-react";
+import { Bot, Plus, Settings, Calendar, ArrowLeft, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

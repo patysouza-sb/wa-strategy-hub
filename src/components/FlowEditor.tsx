@@ -1,13 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Play, MessageSquare, Grid3X3, Shuffle, Tag, HeadphonesIcon, Building2,
-  Save, RotateCcw, GitBranch, Clock, Bell, X, GripVertical, Plus, Trash2,
-  ZoomIn, ZoomOut, Undo2, MousePointer2
+  Save, RotateCcw, GitBranch, Clock, Bell, X, Plus, Trash2,
+  ZoomIn, ZoomOut, Undo2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 
 interface FlowNode {
   id: string;
@@ -65,7 +64,7 @@ export default function FlowEditor({ flowName, onBack }: { flowName: string; onB
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [connecting, setConnecting] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [_pan, _setPan] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 

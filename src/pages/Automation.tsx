@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { Zap, Webhook, CalendarDays, Megaphone, RotateCcw, Puzzle, Plus, Trash2, Play, Pause } from "lucide-react";
+import { Zap, Puzzle, Plus, Trash2, Play, Pause } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
