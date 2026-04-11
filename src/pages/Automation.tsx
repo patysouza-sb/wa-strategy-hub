@@ -400,10 +400,51 @@ export default function Automation() {
               </div>
             )}
             {newRule.action === "send_message" && (
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Mensagem (use {"{nome}"} para variáveis)</label>
-                <Textarea value={newRule.message} onChange={e => setNewRule(p => ({ ...p, message: e.target.value }))} placeholder="Olá {nome}! ..." className="mt-1" />
-              </div>
+              <>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Mensagem (use {"{nome}"} para variáveis)</label>
+                  <Textarea value={newRule.message} onChange={e => setNewRule(p => ({ ...p, message: e.target.value }))} placeholder="Olá {nome}! ..." className="mt-1" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Intervalo por mensagem</label>
+                    <Select value={newRule.delay || "1min"} onValueChange={v => setNewRule(p => ({ ...p, delay: v }))}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="30s">30 segundos</SelectItem>
+                        <SelectItem value="1min">1 minuto</SelectItem>
+                        <SelectItem value="2min">2 minutos</SelectItem>
+                        <SelectItem value="5min">5 minutos</SelectItem>
+                        <SelectItem value="10min">10 minutos</SelectItem>
+                        <SelectItem value="30min">30 minutos</SelectItem>
+                        <SelectItem value="1h">1 hora</SelectItem>
+                        <SelectItem value="2h">2 horas</SelectItem>
+                        <SelectItem value="24h">24 horas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Intervalo por áudio</label>
+                    <Select defaultValue="2min">
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1min">1 minuto</SelectItem>
+                        <SelectItem value="2min">2 minutos</SelectItem>
+                        <SelectItem value="3min">3 minutos</SelectItem>
+                        <SelectItem value="5min">5 minutos</SelectItem>
+                        <SelectItem value="10min">10 minutos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Anexar Mídia (provas sociais, produtos)</label>
+                  <div className="mt-1 border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer">
+                    <p className="text-xs text-muted-foreground">Arraste imagens, vídeos ou áudios aqui</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Suporta: JPG, PNG, MP4, MP3, OGG</p>
+                  </div>
+                </div>
+              </>
             )}
           </div>
           <DialogFooter>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { Settings as SettingsIcon, Building, MessageSquareText, FileText, Globe, Tag, Building2, Users, BookOpen, Clock, GitBranch, Link, Code, Phone, Plus, Trash2, Wifi, WifiOff, CheckCircle2 } from "lucide-react";
+import { GitBranch, Phone, Plus, Trash2, Wifi, WifiOff } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
