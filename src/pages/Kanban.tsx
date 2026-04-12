@@ -19,44 +19,12 @@ interface KanbanColumn {
 }
 
 const initialColumns: KanbanColumn[] = [
-  {
-    id: "new", title: "Novo Contato", color: "bg-blue-500",
-    cards: [
-      { id: "1", name: "Lucas Ferreira", phone: "+55 11 98765-4321", tags: ["WhatsApp"] },
-      { id: "2", name: "Juliana Santos", phone: "+55 21 99876-5432", tags: ["Instagram"] },
-    ]
-  },
-  {
-    id: "interested", title: "Interessado", color: "bg-primary",
-    cards: [
-      { id: "3", name: "Roberto Almeida", phone: "+55 31 97654-3210", value: "R$ 297", tags: ["Lead Quente"] },
-    ]
-  },
-  {
-    id: "proposal", title: "Proposta", color: "bg-orange-500",
-    cards: [
-      { id: "4", name: "Carla Mendes", phone: "+55 41 96543-2109", value: "R$ 1.497", tags: ["Enterprise"] },
-      { id: "5", name: "André Costa", phone: "+55 51 95432-1098", value: "R$ 497", tags: ["Profissional"] },
-    ]
-  },
-  {
-    id: "negotiation", title: "Negociação", color: "bg-purple-500",
-    cards: [
-      { id: "6", name: "Patrícia Lima", phone: "+55 61 94321-0987", value: "R$ 2.997", tags: ["VIP"] },
-    ]
-  },
-  {
-    id: "closing", title: "Fechamento", color: "bg-success",
-    cards: [
-      { id: "7", name: "Marcos Oliveira", phone: "+55 71 93210-9876", value: "R$ 997", tags: ["Recorrente"] },
-    ]
-  },
-  {
-    id: "paid", title: "Pago", color: "bg-success",
-    cards: [
-      { id: "8", name: "Fernanda Ribeiro", phone: "+55 81 92109-8765", value: "R$ 497", tags: ["Cliente"] },
-    ]
-  },
+  { id: "new", title: "Novo Contato", color: "bg-blue-500", cards: [] },
+  { id: "interested", title: "Interessado", color: "bg-primary", cards: [] },
+  { id: "proposal", title: "Proposta", color: "bg-orange-500", cards: [] },
+  { id: "negotiation", title: "Negociação", color: "bg-purple-500", cards: [] },
+  { id: "closing", title: "Fechamento", color: "bg-success", cards: [] },
+  { id: "paid", title: "Pago", color: "bg-success", cards: [] },
 ];
 
 export default function Kanban() {
@@ -111,7 +79,12 @@ export default function Kanban() {
                 </Button>
               </div>
 
-              <div className="space-y-2 flex-1">
+              <div className="space-y-2 flex-1 min-h-[100px]">
+                {col.cards.length === 0 && (
+                  <div className="flex items-center justify-center h-20 text-xs text-muted-foreground border-2 border-dashed border-border rounded-lg">
+                    Arraste contatos aqui
+                  </div>
+                )}
                 {col.cards.map(card => (
                   <div
                     key={card.id}

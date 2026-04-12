@@ -24,15 +24,6 @@ interface AutoRule {
   delay?: string;
 }
 
-const initialRules: AutoRule[] = [
-  { id: 1, name: "Mensagem após 24h sem resposta", trigger: "Inatividade", triggerType: "inactivity", action: "send_message", status: "active", message: "Olá! Notamos que não recebemos sua resposta. Podemos ajudar?", delay: "24h" },
-  { id: 2, name: "Pós-venda automática", trigger: "Tag: Cliente", triggerType: "tag", action: "start_flow", status: "active", flowName: "Pós-venda" },
-  { id: 3, name: "Lembrete de pagamento", trigger: "Etapa: Fechamento", triggerType: "stage", action: "send_message", status: "paused", message: "Olá {nome}! Seu pagamento está pendente.", delay: "48h" },
-  { id: 4, name: "Remarketing 7 dias", trigger: "Tag: Lead", triggerType: "tag", action: "send_message", status: "active", message: "Olá {nome}! Temos uma oferta especial para você." },
-  { id: 5, name: "Boas-vindas novo contato", trigger: "Novo contato", triggerType: "new_contact", action: "start_flow", status: "active", flowName: "Boas-vindas" },
-  { id: 6, name: "Follow-up interessados", trigger: "Etapa: Interessado", triggerType: "stage", action: "send_message", status: "active", message: "Olá {nome}! Vi que você se interessou. Posso te ajudar?", delay: "2h" },
-];
-
 const TRIGGER_TYPES = [
   { value: "inactivity", label: "Inatividade" },
   { value: "tag", label: "Por tag" },
@@ -56,7 +47,7 @@ const KANBAN_STAGES = ["Novo contato", "Interessado", "Proposta", "Negociação"
 const AVAILABLE_TAGS = ["Lead", "Cliente", "VIP", "Inativo", "Prospect"];
 
 export default function Automation() {
-  const [rules, setRules] = useState<AutoRule[]>(initialRules);
+  const [rules, setRules] = useState<AutoRule[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [showFlowCreate, setShowFlowCreate] = useState(false);
   const [newRule, setNewRule] = useState({ name: "", triggerType: "inactivity", action: "send_message", message: "", flowName: "", delay: "", tagValue: "", stageValue: "" });
@@ -113,13 +104,10 @@ export default function Automation() {
           </div>
         </div>
 
-        {/* Quick stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="border border-border shadow-none">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Zap className="w-5 h-5 text-primary" />
-              </div>
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"><Zap className="w-5 h-5 text-primary" /></div>
               <div>
                 <p className="text-lg font-bold text-foreground">{rules.length}</p>
                 <p className="text-[10px] text-muted-foreground">Regras criadas</p>
@@ -128,9 +116,7 @@ export default function Automation() {
           </Card>
           <Card className="border border-border shadow-none">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5 text-success" />
-              </div>
+              <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center"><CheckCircle2 className="w-5 h-5 text-success" /></div>
               <div>
                 <p className="text-lg font-bold text-foreground">{activeCount}</p>
                 <p className="text-[10px] text-muted-foreground">Ativas agora</p>
@@ -139,9 +125,7 @@ export default function Automation() {
           </Card>
           <Card className="border border-border shadow-none">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                <GitBranch className="w-5 h-5 text-blue-500" />
-              </div>
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center"><GitBranch className="w-5 h-5 text-blue-500" /></div>
               <div>
                 <p className="text-lg font-bold text-foreground">{rules.filter(r => r.action === "start_flow").length}</p>
                 <p className="text-[10px] text-muted-foreground">Vinculadas a fluxos</p>
@@ -150,11 +134,9 @@ export default function Automation() {
           </Card>
           <Card className="border border-border shadow-none">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                <Puzzle className="w-5 h-5 text-purple-500" />
-              </div>
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center"><Puzzle className="w-5 h-5 text-purple-500" /></div>
               <div>
-                <p className="text-lg font-bold text-foreground">4</p>
+                <p className="text-lg font-bold text-foreground">0</p>
                 <p className="text-[10px] text-muted-foreground">Integrações</p>
               </div>
             </CardContent>
@@ -171,57 +153,58 @@ export default function Automation() {
           </TabsList>
 
           <TabsContent value="rules" className="mt-4">
-            <div className="space-y-3">
-              {rules.map(rule => (
-                <Card key={rule.id} className="border border-border shadow-none hover:shadow-sm transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${rule.status === "active" ? "bg-success/10" : "bg-muted"}`}>
-                          <Zap className={`w-4 h-4 ${rule.status === "active" ? "text-success" : "text-muted-foreground"}`} />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">{rule.name}</p>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            <span className="text-xs text-muted-foreground">Gatilho: <strong>{rule.trigger}</strong></span>
-                            <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">Ação: <strong>{ACTION_TYPES.find(a => a.value === rule.action)?.label}</strong></span>
-                            {rule.flowName && (
-                              <>
-                                <ArrowRight className="w-3 h-3 text-primary" />
-                                <Badge variant="secondary" className="text-[10px] gap-1">
-                                  <GitBranch className="w-2.5 h-2.5" /> {rule.flowName}
-                                </Badge>
-                              </>
-                            )}
-                            {rule.delay && (
-                              <Badge variant="outline" className="text-[10px]">⏱ {rule.delay}</Badge>
-                            )}
+            {rules.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Zap className="w-12 h-12 text-muted-foreground/20 mb-4" />
+                <p className="text-sm text-muted-foreground">Nenhuma regra de automação criada</p>
+                <p className="text-xs text-muted-foreground mt-1">Clique em "Nova Regra" para automatizar seu atendimento.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {rules.map(rule => (
+                  <Card key={rule.id} className="border border-border shadow-none hover:shadow-sm transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${rule.status === "active" ? "bg-success/10" : "bg-muted"}`}>
+                            <Zap className={`w-4 h-4 ${rule.status === "active" ? "text-success" : "text-muted-foreground"}`} />
                           </div>
-                          {rule.message && (
-                            <p className="text-[10px] text-muted-foreground mt-1 truncate max-w-md">"{rule.message}"</p>
-                          )}
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-foreground">{rule.name}</p>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="text-xs text-muted-foreground">Gatilho: <strong>{rule.trigger}</strong></span>
+                              <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">Ação: <strong>{ACTION_TYPES.find(a => a.value === rule.action)?.label}</strong></span>
+                              {rule.flowName && (
+                                <>
+                                  <ArrowRight className="w-3 h-3 text-primary" />
+                                  <Badge variant="secondary" className="text-[10px] gap-1"><GitBranch className="w-2.5 h-2.5" /> {rule.flowName}</Badge>
+                                </>
+                              )}
+                              {rule.delay && <Badge variant="outline" className="text-[10px]">⏱ {rule.delay}</Badge>}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Badge className={`text-[10px] border-0 mr-1 ${rule.status === "active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
+                            {rule.status === "active" ? "Ativo" : "Pausado"}
+                          </Badge>
+                          <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => toggleRule(rule.id)}>
+                            {rule.status === "active" ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                          </Button>
+                          <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => duplicateRule(rule.id)}>
+                            <Copy className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive" onClick={() => deleteRule(rule.id)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Badge className={`text-[10px] border-0 mr-1 ${rule.status === "active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
-                          {rule.status === "active" ? "Ativo" : "Pausado"}
-                        </Badge>
-                        <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => toggleRule(rule.id)} title={rule.status === "active" ? "Pausar" : "Ativar"}>
-                          {rule.status === "active" ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                        </Button>
-                        <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => duplicateRule(rule.id)} title="Duplicar">
-                          <Copy className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive" onClick={() => deleteRule(rule.id)} title="Excluir">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="webhooks" className="mt-4">
@@ -230,16 +213,11 @@ export default function Automation() {
                 <h3 className="text-sm font-semibold text-foreground">Endpoints de Webhook</h3>
                 <div className="bg-muted/50 rounded-lg p-4">
                   <p className="text-xs font-medium text-foreground mb-1">URL do Webhook (Receber)</p>
-                  <code className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded block">https://api.zapestrategico.com/webhook/seu-token</code>
+                  <code className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded block">Configure sua URL de webhook aqui</code>
                 </div>
                 <div className="bg-muted/50 rounded-lg p-4">
                   <p className="text-xs font-medium text-foreground mb-1">URL do Webhook (Enviar)</p>
                   <Input placeholder="https://seu-servidor.com/webhook" className="mt-1" />
-                  <div className="flex gap-2 mt-2">
-                    {["Mensagem recebida", "Contato criado", "Etapa alterada"].map(ev => (
-                      <Badge key={ev} variant="secondary" className="text-[10px]">{ev}</Badge>
-                    ))}
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -247,43 +225,16 @@ export default function Automation() {
 
           <TabsContent value="schedules" className="mt-4">
             <Card className="border border-border shadow-none">
-              <CardContent className="p-6 space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">Agendamentos Ativos</h3>
-                {[
-                  { name: "Lembrete diário", time: "09:00", days: "Seg-Sex", active: true },
-                  { name: "Follow-up semanal", time: "14:00", days: "Segunda", active: true },
-                  { name: "Relatório mensal", time: "08:00", days: "Dia 1", active: false },
-                ].map(sched => (
-                  <div key={sched.name} className="flex items-center justify-between bg-muted/30 rounded-lg p-3">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{sched.name}</p>
-                      <p className="text-xs text-muted-foreground">{sched.time} - {sched.days}</p>
-                    </div>
-                    <Switch checked={sched.active} />
-                  </div>
-                ))}
+              <CardContent className="p-10 text-center text-muted-foreground text-sm">
+                Nenhum agendamento configurado. Crie regras com gatilho "Agendamento" para começar.
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="campaigns" className="mt-4">
             <Card className="border border-border shadow-none">
-              <CardContent className="p-6 space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">Campanhas de Remarketing</h3>
-                {[
-                  { name: "Remarketing 7 dias", contacts: 245, sent: 180, status: "active" },
-                  { name: "Remarketing 30 dias", contacts: 520, sent: 0, status: "draft" },
-                ].map(camp => (
-                  <div key={camp.name} className="flex items-center justify-between bg-muted/30 rounded-lg p-3">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{camp.name}</p>
-                      <p className="text-xs text-muted-foreground">{camp.contacts} contatos • {camp.sent} enviados</p>
-                    </div>
-                    <Badge className={`text-[10px] border-0 ${camp.status === "active" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
-                      {camp.status === "active" ? "Ativa" : "Rascunho"}
-                    </Badge>
-                  </div>
-                ))}
+              <CardContent className="p-10 text-center text-muted-foreground text-sm">
+                Nenhuma campanha criada. Use a aba Transmissão para criar campanhas de remarketing.
               </CardContent>
             </Card>
           </TabsContent>
@@ -293,24 +244,20 @@ export default function Automation() {
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
-                    { name: "N8N", desc: "Automação de workflows", connected: false },
-                    { name: "Zapier", desc: "Conecte 5000+ apps", connected: false },
-                    { name: "Google Sheets", desc: "Sincronize contatos", connected: true },
-                    { name: "Stripe", desc: "Pagamentos automáticos", connected: false },
+                    { name: "N8N", desc: "Automação de workflows" },
+                    { name: "Zapier", desc: "Conecte 5000+ apps" },
+                    { name: "Google Sheets", desc: "Sincronize contatos" },
+                    { name: "Stripe", desc: "Pagamentos automáticos" },
                   ].map(integ => (
                     <div key={integ.name} className="flex items-center justify-between bg-muted/30 rounded-lg p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Puzzle className="w-5 h-5 text-primary" />
-                        </div>
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><Puzzle className="w-5 h-5 text-primary" /></div>
                         <div>
                           <p className="text-sm font-medium text-foreground">{integ.name}</p>
                           <p className="text-[10px] text-muted-foreground">{integ.desc}</p>
                         </div>
                       </div>
-                      <Button variant={integ.connected ? "outline" : "default"} size="sm" className={`text-xs ${!integ.connected ? "bg-primary text-primary-foreground" : ""}`}>
-                        {integ.connected ? "Conectado" : "Conectar"}
-                      </Button>
+                      <Button size="sm" className="text-xs bg-primary text-primary-foreground">Conectar</Button>
                     </div>
                   ))}
                 </div>
@@ -320,45 +267,60 @@ export default function Automation() {
         </Tabs>
       </div>
 
-      {/* Create Rule Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Nova Regra de Automação</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Nova Regra de Automação</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Nome da Regra</label>
-              <Input value={newRule.name} onChange={e => setNewRule(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Follow-up automático" className="mt-1" />
+              <Input value={newRule.name} onChange={e => setNewRule(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Mensagem de boas-vindas" className="mt-1" />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Gatilho</label>
-              <Select value={newRule.triggerType} onValueChange={v => setNewRule(p => ({ ...p, triggerType: v }))}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {TRIGGER_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Gatilho</label>
+                <Select value={newRule.triggerType} onValueChange={v => setNewRule(p => ({ ...p, triggerType: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>{TRIGGER_TYPES.map(t => (<SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Ação</label>
+                <Select value={newRule.action} onValueChange={v => setNewRule(p => ({ ...p, action: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>{ACTION_TYPES.map(a => (<SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
             </div>
             {newRule.triggerType === "tag" && (
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Selecione a Tag</label>
+                <label className="text-xs font-medium text-muted-foreground">Selecione a tag</label>
                 <Select value={newRule.tagValue} onValueChange={v => setNewRule(p => ({ ...p, tagValue: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Escolha uma tag" /></SelectTrigger>
-                  <SelectContent>
-                    {AVAILABLE_TAGS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Escolha" /></SelectTrigger>
+                  <SelectContent>{AVAILABLE_TAGS.map(t => (<SelectItem key={t} value={t}>{t}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
             )}
             {newRule.triggerType === "stage" && (
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Selecione a Etapa</label>
+                <label className="text-xs font-medium text-muted-foreground">Selecione a etapa</label>
                 <Select value={newRule.stageValue} onValueChange={v => setNewRule(p => ({ ...p, stageValue: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Escolha uma etapa" /></SelectTrigger>
-                  <SelectContent>
-                    {KANBAN_STAGES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Escolha" /></SelectTrigger>
+                  <SelectContent>{KANBAN_STAGES.map(s => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
+            )}
+            {(newRule.action === "send_message") && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Mensagem</label>
+                <Textarea value={newRule.message} onChange={e => setNewRule(p => ({ ...p, message: e.target.value }))} placeholder="Olá {nome}! ..." className="mt-1" />
+              </div>
+            )}
+            {newRule.action === "start_flow" && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Selecione o fluxo</label>
+                <Select value={newRule.flowName} onValueChange={v => setNewRule(p => ({ ...p, flowName: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Escolha" /></SelectTrigger>
+                  <SelectContent>{AVAILABLE_FLOWS.map(f => (<SelectItem key={f} value={f}>{f}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
             )}
@@ -379,73 +341,6 @@ export default function Automation() {
                 </Select>
               </div>
             )}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Ação</label>
-              <Select value={newRule.action} onValueChange={v => setNewRule(p => ({ ...p, action: v }))}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {ACTION_TYPES.map(a => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            {newRule.action === "start_flow" && (
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Fluxo a iniciar</label>
-                <Select value={newRule.flowName} onValueChange={v => setNewRule(p => ({ ...p, flowName: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione o fluxo" /></SelectTrigger>
-                  <SelectContent>
-                    {AVAILABLE_FLOWS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {newRule.action === "send_message" && (
-              <>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Mensagem (use {"{nome}"} para variáveis)</label>
-                  <Textarea value={newRule.message} onChange={e => setNewRule(p => ({ ...p, message: e.target.value }))} placeholder="Olá {nome}! ..." className="mt-1" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Intervalo por mensagem</label>
-                    <Select value={newRule.delay || "1min"} onValueChange={v => setNewRule(p => ({ ...p, delay: v }))}>
-                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="30s">30 segundos</SelectItem>
-                        <SelectItem value="1min">1 minuto</SelectItem>
-                        <SelectItem value="2min">2 minutos</SelectItem>
-                        <SelectItem value="5min">5 minutos</SelectItem>
-                        <SelectItem value="10min">10 minutos</SelectItem>
-                        <SelectItem value="30min">30 minutos</SelectItem>
-                        <SelectItem value="1h">1 hora</SelectItem>
-                        <SelectItem value="2h">2 horas</SelectItem>
-                        <SelectItem value="24h">24 horas</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Intervalo por áudio</label>
-                    <Select defaultValue="2min">
-                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1min">1 minuto</SelectItem>
-                        <SelectItem value="2min">2 minutos</SelectItem>
-                        <SelectItem value="3min">3 minutos</SelectItem>
-                        <SelectItem value="5min">5 minutos</SelectItem>
-                        <SelectItem value="10min">10 minutos</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Anexar Mídia (provas sociais, produtos)</label>
-                  <div className="mt-1 border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                    <p className="text-xs text-muted-foreground">Arraste imagens, vídeos ou áudios aqui</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">Suporta: JPG, PNG, MP4, MP3, OGG</p>
-                  </div>
-                </div>
-              </>
-            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancelar</Button>
@@ -454,41 +349,22 @@ export default function Automation() {
         </DialogContent>
       </Dialog>
 
-      {/* Create Flow from Automation Dialog */}
       <Dialog open={showFlowCreate} onOpenChange={setShowFlowCreate}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Criar Fluxo de Automação</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Criar Fluxo Inteligente</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Crie um fluxo de atendimento inteligente baseado nas suas regras de automação. O fluxo será adicionado à página de Fluxos de Conversa.
-            </p>
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-              <p className="text-xs font-medium text-foreground">Modelos disponíveis:</p>
-              {[
-                { name: "Fluxo de Boas-vindas + Qualificação", desc: "Recepciona e qualifica leads automaticamente" },
-                { name: "Fluxo de Suporte Automatizado", desc: "Atende dúvidas frequentes e escala para humano" },
-                { name: "Fluxo de Remarketing", desc: "Re-engaja contatos inativos com ofertas" },
-                { name: "Fluxo de Pós-venda", desc: "Coleta feedback e oferece upsell" },
-              ].map(tpl => (
-                <button
-                  key={tpl.name}
-                  className="w-full text-left bg-background rounded-lg p-3 border border-border hover:border-primary/50 transition-colors"
-                  onClick={() => {
-                    setShowFlowCreate(false);
-                    toast.success(`Fluxo "${tpl.name}" criado! Acesse a página de Fluxos para editar.`);
-                  }}
-                >
-                  <p className="text-sm font-medium text-foreground">{tpl.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{tpl.desc}</p>
-                </button>
-              ))}
-            </div>
+            <p className="text-sm text-muted-foreground">Escolha um modelo de fluxo para começar:</p>
+            {["Boas-vindas", "Qualificação de Lead", "Pós-venda", "Remarketing"].map(f => (
+              <button key={f} onClick={() => { setShowFlowCreate(false); toast.success(`Fluxo "${f}" criado!`); }}
+                className="w-full flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left">
+                <GitBranch className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">{f}</p>
+                  <p className="text-[10px] text-muted-foreground">Modelo pronto para usar</p>
+                </div>
+              </button>
+            ))}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowFlowCreate(false)}>Fechar</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </AppLayout>

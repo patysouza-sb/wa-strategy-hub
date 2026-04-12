@@ -26,15 +26,8 @@ interface BroadcastItem {
   date: string;
 }
 
-const initialBroadcasts: BroadcastItem[] = [
-  { id: 1, name: "Promoção Black Friday", type: "Todos contatos", status: "sent", sent: 1250, date: "25/11/2025" },
-  { id: 2, name: "Lançamento Curso", type: "Etiqueta", status: "scheduled", sent: 0, date: "01/12/2025" },
-  { id: 3, name: "Follow-up Leads", type: "Lista", status: "sent", sent: 430, date: "20/11/2025" },
-  { id: 4, name: "Natal - Oferta Especial", type: "Todos contatos", status: "draft", sent: 0, date: "-" },
-];
-
 export default function Broadcast() {
-  const [broadcasts, setBroadcasts] = useState(initialBroadcasts);
+  const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [newBroadcast, setNewBroadcast] = useState({
     name: "", type: "all", tag: "", message: "",
@@ -89,47 +82,52 @@ export default function Broadcast() {
           </Button>
         </div>
 
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-left py-3 px-5 text-muted-foreground font-medium">Nome</th>
-                <th className="text-left py-3 px-5 text-muted-foreground font-medium">Tipo</th>
-                <th className="text-center py-3 px-5 text-muted-foreground font-medium">Status</th>
-                <th className="text-center py-3 px-5 text-muted-foreground font-medium">Enviados</th>
-                <th className="text-center py-3 px-5 text-muted-foreground font-medium">Data</th>
-                <th className="text-right py-3 px-5 text-muted-foreground font-medium">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {broadcasts.map(b => (
-                <tr key={b.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                  <td className="py-3 px-5 font-medium text-foreground">{b.name}</td>
-                  <td className="py-3 px-5 text-muted-foreground">{b.type}</td>
-                  <td className="py-3 px-5 text-center">
-                    <Badge className={`text-[10px] border-0 ${
-                      b.status === "sent" ? "bg-success/10 text-success"
-                      : b.status === "scheduled" ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
-                    }`}>
-                      {b.status === "sent" ? "Enviado" : b.status === "scheduled" ? "Agendado" : "Rascunho"}
-                    </Badge>
-                  </td>
-                  <td className="py-3 px-5 text-center text-foreground">{b.sent}</td>
-                  <td className="py-3 px-5 text-center text-muted-foreground">{b.date}</td>
-                  <td className="py-3 px-5 text-right">
-                    <Button variant="ghost" size="icon" className="w-7 h-7">
-                      <MoreVertical className="w-3.5 h-3.5" />
-                    </Button>
-                  </td>
+        {broadcasts.length === 0 ? (
+          <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-center py-16 text-center">
+            <Radio className="w-12 h-12 text-muted-foreground/20 mb-4" />
+            <p className="text-sm text-muted-foreground">Nenhuma transmissão criada</p>
+            <p className="text-xs text-muted-foreground mt-1">Clique em "Nova Transmissão" para enviar mensagens em massa.</p>
+          </div>
+        ) : (
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="text-left py-3 px-5 text-muted-foreground font-medium">Nome</th>
+                  <th className="text-left py-3 px-5 text-muted-foreground font-medium">Tipo</th>
+                  <th className="text-center py-3 px-5 text-muted-foreground font-medium">Status</th>
+                  <th className="text-center py-3 px-5 text-muted-foreground font-medium">Enviados</th>
+                  <th className="text-center py-3 px-5 text-muted-foreground font-medium">Data</th>
+                  <th className="text-right py-3 px-5 text-muted-foreground font-medium">Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {broadcasts.map(b => (
+                  <tr key={b.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                    <td className="py-3 px-5 font-medium text-foreground">{b.name}</td>
+                    <td className="py-3 px-5 text-muted-foreground">{b.type}</td>
+                    <td className="py-3 px-5 text-center">
+                      <Badge className={`text-[10px] border-0 ${
+                        b.status === "sent" ? "bg-success/10 text-success"
+                        : b.status === "scheduled" ? "bg-primary/10 text-primary"
+                        : "bg-muted text-muted-foreground"
+                      }`}>
+                        {b.status === "sent" ? "Enviado" : b.status === "scheduled" ? "Agendado" : "Rascunho"}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-5 text-center text-foreground">{b.sent}</td>
+                    <td className="py-3 px-5 text-center text-muted-foreground">{b.date}</td>
+                    <td className="py-3 px-5 text-right">
+                      <Button variant="ghost" size="icon" className="w-7 h-7"><MoreVertical className="w-3.5 h-3.5" /></Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Create Broadcast Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -140,7 +138,6 @@ export default function Broadcast() {
               <label className="text-xs font-medium text-muted-foreground">Nome da Transmissão</label>
               <Input value={newBroadcast.name} onChange={e => setNewBroadcast(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Promoção de Verão" className="mt-1" />
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Tipo</label>
@@ -168,13 +165,10 @@ export default function Broadcast() {
                 </div>
               )}
             </div>
-
             <div>
               <label className="text-xs font-medium text-muted-foreground">Mensagem (use {"{nome}"} para variáveis)</label>
               <Textarea value={newBroadcast.message} onChange={e => setNewBroadcast(p => ({ ...p, message: e.target.value }))} placeholder="Olá {nome}! Temos uma oferta especial..." className="mt-1 min-h-[100px]" />
             </div>
-
-            {/* Timing Controls */}
             <div className="border border-border rounded-lg p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-primary" />
@@ -182,30 +176,27 @@ export default function Broadcast() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-medium text-muted-foreground">Intervalo por mensagem (minutos)</label>
+                  <label className="text-[10px] font-medium text-muted-foreground">Intervalo por mensagem</label>
                   <Select value={newBroadcast.delayMinutes} onValueChange={v => setNewBroadcast(p => ({ ...p, delayMinutes: v }))}>
                     <SelectTrigger className="mt-1 h-9 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="0.5">30 segundos</SelectItem>
                       <SelectItem value="1">1 minuto</SelectItem>
                       <SelectItem value="2">2 minutos</SelectItem>
-                      <SelectItem value="3">3 minutos</SelectItem>
                       <SelectItem value="5">5 minutos</SelectItem>
                       <SelectItem value="10">10 minutos</SelectItem>
-                      <SelectItem value="15">15 minutos</SelectItem>
                       <SelectItem value="30">30 minutos</SelectItem>
                       <SelectItem value="60">1 hora</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-medium text-muted-foreground">Intervalo por áudio (minutos)</label>
+                  <label className="text-[10px] font-medium text-muted-foreground">Intervalo por áudio</label>
                   <Select value={newBroadcast.audioDelayMinutes} onValueChange={v => setNewBroadcast(p => ({ ...p, audioDelayMinutes: v }))}>
                     <SelectTrigger className="mt-1 h-9 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">1 minuto</SelectItem>
                       <SelectItem value="2">2 minutos</SelectItem>
-                      <SelectItem value="3">3 minutos</SelectItem>
                       <SelectItem value="5">5 minutos</SelectItem>
                       <SelectItem value="10">10 minutos</SelectItem>
                     </SelectContent>
@@ -214,8 +205,6 @@ export default function Broadcast() {
               </div>
               <p className="text-[10px] text-muted-foreground">Define o intervalo entre cada envio para evitar bloqueios do WhatsApp</p>
             </div>
-
-            {/* Media Upload */}
             <div className="border border-border rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -227,7 +216,6 @@ export default function Broadcast() {
                 </Button>
                 <input ref={fileInputRef} type="file" multiple accept="image/*,video/*,audio/*" className="hidden" onChange={handleFileUpload} />
               </div>
-
               {newBroadcast.mediaFiles.length > 0 && (
                 <div className="grid grid-cols-2 gap-2">
                   {newBroadcast.mediaFiles.map(file => (
@@ -250,7 +238,6 @@ export default function Broadcast() {
                   ))}
                 </div>
               )}
-
               <div className="flex gap-2">
                 <button onClick={() => fileInputRef.current?.click()} className="flex-1 border-2 border-dashed border-border rounded-lg p-3 hover:border-primary/50 transition-colors text-center">
                   <Image className="w-5 h-5 mx-auto text-muted-foreground mb-1" />
@@ -265,7 +252,6 @@ export default function Broadcast() {
                   <p className="text-[10px] text-muted-foreground">Áudios</p>
                 </button>
               </div>
-              <p className="text-[10px] text-muted-foreground">Envie prints de resultados, depoimentos, fotos de produtos e vídeos de provas sociais</p>
             </div>
           </div>
           <DialogFooter>
