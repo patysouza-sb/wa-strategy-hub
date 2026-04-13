@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import {
   GitBranch, Plus, Play, Pause, Folder, Pencil, Copy, Share2,
-  Trash2, ChevronRight, ChevronDown, MoreVertical, FolderPlus, Clock
+  Trash2, ChevronRight, ChevronDown, MoreVertical, FolderPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
