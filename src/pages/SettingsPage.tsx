@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { GitBranch, Phone, Plus, Trash2, Wifi, WifiOff } from "lucide-react";
+import { Phone, Plus, Trash2, Wifi, WifiOff, QrCode, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -28,11 +28,38 @@ const FLOWS = ["Boas-vindas Padrão", "Boas-vindas VIP", "FAQ Automático", "Res
 export default function SettingsPage() {
   const [connections, setConnections] = useState<WhatsAppConnection[]>([]);
   const [showAddConnection, setShowAddConnection] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [qrExpired, setQrExpired] = useState(false);
+  const [qrTimer, setQrTimer] = useState(60);
   const [newConn, setNewConn] = useState({ name: "", phone: "", welcomeFlow: "Boas-vindas Padrão", defaultFlow: "Resposta Geral", inactivityTime: "24h", closedFlow: "Pesquisa de Satisfação" });
   const [editingConn, setEditingConn] = useState<WhatsAppConnection | null>(null);
 
-  const addConnection = () => {
-    if (!newConn.name || !newConn.phone) return;
+  // QR Code timer
+  useEffect(() => {
+    if (!showQRCode || qrExpired) return;
+    if (qrTimer <= 0) { setQrExpired(true); return; }
+    const t = setTimeout(() => setQrTimer(prev => prev - 1), 1000);
+    return () => clearTimeout(t);
+  }, [showQRCode, qrTimer, qrExpired]);
+
+  const startQRCode = () => {
+    if (!newConn.name || !newConn.phone) {
+      toast.error("Preencha o nome e número antes de continuar");
+      return;
+    }
+    setShowAddConnection(false);
+    setShowQRCode(true);
+    setQrExpired(false);
+    setQrTimer(60);
+  };
+
+  const refreshQR = () => {
+    setQrExpired(false);
+    setQrTimer(60);
+    toast.info("QR Code atualizado!");
+  };
+
+  const confirmQRConnection = () => {
     setConnections(prev => [...prev, {
       id: Date.now(), ...newConn, status: "connecting" as const,
     }]);
@@ -40,8 +67,8 @@ export default function SettingsPage() {
       setConnections(prev => prev.map(c => c.status === "connecting" ? { ...c, status: "connected", lastSeen: "Agora" } : c));
     }, 2000);
     setNewConn({ name: "", phone: "", welcomeFlow: "Boas-vindas Padrão", defaultFlow: "Resposta Geral", inactivityTime: "24h", closedFlow: "Pesquisa de Satisfação" });
-    setShowAddConnection(false);
-    toast.success("Conexão adicionada! Conectando...");
+    setShowQRCode(false);
+    toast.success("WhatsApp conectado com sucesso!");
   };
 
   const toggleConnection = (id: number) => {
@@ -237,7 +264,58 @@ export default function SettingsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddConnection(false)}>Cancelar</Button>
-            <Button onClick={addConnection} className="bg-primary text-primary-foreground gap-2"><Phone className="w-4 h-4" /> Conectar</Button>
+            <Button onClick={startQRCode} className="bg-primary text-primary-foreground gap-2"><QrCode className="w-4 h-4" /> Gerar QR Code</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* QR Code Dialog */}
+      <Dialog open={showQRCode} onOpenChange={(open) => { if (!open) setShowQRCode(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><QrCode className="w-5 h-5" /> Escanear QR Code</DialogTitle></DialogHeader>
+          <div className="flex flex-col items-center space-y-4 py-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Abra o <strong>WhatsApp Business</strong> no celular → Menu (⋮) → <strong>Aparelhos conectados</strong> → <strong>Conectar um aparelho</strong>
+            </p>
+            <div className="relative w-64 h-64 border-2 border-border rounded-2xl flex items-center justify-center bg-white">
+              {qrExpired ? (
+                <div className="flex flex-col items-center gap-3 text-center">
+                  <QrCode className="w-16 h-16 text-muted-foreground/30" />
+                  <p className="text-xs text-muted-foreground">QR Code expirado</p>
+                  <Button size="sm" variant="outline" onClick={refreshQR} className="gap-1.5">
+                    <RefreshCw className="w-3.5 h-3.5" /> Atualizar
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {/* Simulated QR Code pattern */}
+                  <div className="grid grid-cols-11 gap-[2px] p-4">
+                    {Array.from({ length: 121 }, (_, i) => {
+                      const row = Math.floor(i / 11);
+                      const col = i % 11;
+                      const isCorner = (row < 3 && col < 3) || (row < 3 && col > 7) || (row > 7 && col < 3);
+                      const isFilled = isCorner || Math.random() > 0.5;
+                      return (
+                        <div key={i} className={`w-3.5 h-3.5 rounded-[1px] ${isFilled ? "bg-foreground" : "bg-transparent"}`} />
+                      );
+                    })}
+                  </div>
+                  <div className="absolute bottom-3 right-3 bg-background/80 backdrop-blur-sm rounded-md px-2 py-1">
+                    <span className="text-xs font-mono text-muted-foreground">{qrTimer}s</span>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium text-foreground">{newConn.name || "Conexão"}</p>
+              <p className="text-xs text-muted-foreground">{newConn.phone}</p>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setShowQRCode(false)}>Cancelar</Button>
+            <Button onClick={confirmQRConnection} className="bg-success hover:bg-success/90 text-white gap-2">
+              <Wifi className="w-4 h-4" /> Já escaneei, conectar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
