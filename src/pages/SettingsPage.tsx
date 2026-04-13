@@ -42,8 +42,24 @@ export default function SettingsPage() {
     return () => clearTimeout(t);
   }, [showQRCode, qrTimer, qrExpired]);
 
-  const addConnection = () => {
-    if (!newConn.name || !newConn.phone) return;
+  const startQRCode = () => {
+    if (!newConn.name || !newConn.phone) {
+      toast.error("Preencha o nome e número antes de continuar");
+      return;
+    }
+    setShowAddConnection(false);
+    setShowQRCode(true);
+    setQrExpired(false);
+    setQrTimer(60);
+  };
+
+  const refreshQR = () => {
+    setQrExpired(false);
+    setQrTimer(60);
+    toast.info("QR Code atualizado!");
+  };
+
+  const confirmQRConnection = () => {
     setConnections(prev => [...prev, {
       id: Date.now(), ...newConn, status: "connecting" as const,
     }]);
@@ -51,8 +67,8 @@ export default function SettingsPage() {
       setConnections(prev => prev.map(c => c.status === "connecting" ? { ...c, status: "connected", lastSeen: "Agora" } : c));
     }, 2000);
     setNewConn({ name: "", phone: "", welcomeFlow: "Boas-vindas Padrão", defaultFlow: "Resposta Geral", inactivityTime: "24h", closedFlow: "Pesquisa de Satisfação" });
-    setShowAddConnection(false);
-    toast.success("Conexão adicionada! Conectando...");
+    setShowQRCode(false);
+    toast.success("WhatsApp conectado com sucesso!");
   };
 
   const toggleConnection = (id: number) => {
