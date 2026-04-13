@@ -28,8 +28,19 @@ const FLOWS = ["Boas-vindas Padrão", "Boas-vindas VIP", "FAQ Automático", "Res
 export default function SettingsPage() {
   const [connections, setConnections] = useState<WhatsAppConnection[]>([]);
   const [showAddConnection, setShowAddConnection] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [qrExpired, setQrExpired] = useState(false);
+  const [qrTimer, setQrTimer] = useState(60);
   const [newConn, setNewConn] = useState({ name: "", phone: "", welcomeFlow: "Boas-vindas Padrão", defaultFlow: "Resposta Geral", inactivityTime: "24h", closedFlow: "Pesquisa de Satisfação" });
   const [editingConn, setEditingConn] = useState<WhatsAppConnection | null>(null);
+
+  // QR Code timer
+  useEffect(() => {
+    if (!showQRCode || qrExpired) return;
+    if (qrTimer <= 0) { setQrExpired(true); return; }
+    const t = setTimeout(() => setQrTimer(prev => prev - 1), 1000);
+    return () => clearTimeout(t);
+  }, [showQRCode, qrTimer, qrExpired]);
 
   const addConnection = () => {
     if (!newConn.name || !newConn.phone) return;
