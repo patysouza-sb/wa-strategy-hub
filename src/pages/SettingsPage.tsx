@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { GitBranch, Phone, Plus, Trash2, Wifi, WifiOff, QrCode, RefreshCw } from "lucide-react";
+import { Phone, Plus, Trash2, Wifi, WifiOff, QrCode, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
