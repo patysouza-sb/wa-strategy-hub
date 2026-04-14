@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import {
   GitBranch, Plus, Play, Pause, Folder, Pencil, Copy, Share2,
@@ -17,203 +17,223 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import FlowEditor from "@/components/FlowEditor";
+import { useSupabaseTable } from "@/hooks/useSupabaseData";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-interface Flow {
-  id: number;
+interface DbFolder {
+  id: string;
   name: string;
-  folder: string;
+  is_open: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DbFlow {
+  id: string;
+  name: string;
+  folder_id: string | null;
   shortcut: string;
-  status: "active" | "paused";
+  status: string;
+  nodes: any;
+  connections: any;
+  created_at: string;
+  updated_at: string;
 }
 
-interface FlowFolder {
-  name: string;
-  open: boolean;
-}
-
-const DEFAULT_FOLDERS: FlowFolder[] = [
-  { name: "ATENDIMENTOS FUNIL SCRIPT", open: true },
-  { name: "Atendimento Inicial", open: false },
-  { name: "Provas Sociais", open: false },
-  { name: "Fechamento", open: false },
-  { name: "Remarketing", open: false },
-  { name: "Pós-venda", open: false },
+const DEFAULT_FOLDER_NAMES = [
+  "ATENDIMENTOS FUNIL SCRIPT",
+  "Atendimento Inicial",
+  "Provas Sociais",
+  "Fechamento",
+  "Remarketing",
+  "Pós-venda",
 ];
 
 export default function Flows() {
-  const [flows, setFlows] = useState<Flow[]>([]);
-  const [folders, setFolders] = useState<FlowFolder[]>(DEFAULT_FOLDERS);
-  const [editingFlow, setEditingFlow] = useState<string | null>(null);
+  const { data: folders, loading: foldersLoading, insert: insertFolder, update: updateFolder, remove: removeFolder, fetch: fetchFolders } = useSupabaseTable<DbFolder>("flow_folders", "sort_order");
+  const { data: flows, loading: flowsLoading, insert: insertFlow, update: updateFlow, remove: removeFlow, fetch: fetchFlows } = useSupabaseTable<DbFlow>("flows", "created_at");
+
+  const [editingFlow, setEditingFlow] = useState<{ id: string; name: string } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showCreateFolder, setShowCreateFolder] = useState(false);
-  const [selectedFolder, setSelectedFolder] = useState<string>(DEFAULT_FOLDERS[0].name);
-  const [newFlow, setNewFlow] = useState({ name: "", folder: "", shortcut: "", delay: "" });
+  const [selectedFolderId, setSelectedFolderId] = useState<string>("");
+  const [newFlow, setNewFlow] = useState({ name: "", shortcut: "", delay: "" });
   const [newFolderName, setNewFolderName] = useState("");
+  const [initialized, setInitialized] = useState(false);
+
+  // Seed default folders if none exist
+  useEffect(() => {
+    if (foldersLoading || initialized) return;
+    if (folders.length === 0) {
+      const seedFolders = async () => {
+        for (let i = 0; i < DEFAULT_FOLDER_NAMES.length; i++) {
+          await (supabase as any).from("flow_folders").insert({
+            name: DEFAULT_FOLDER_NAMES[i],
+            is_open: i === 0,
+            sort_order: i,
+          });
+        }
+        await fetchFolders();
+      };
+      seedFolders();
+    }
+    setInitialized(true);
+  }, [foldersLoading, folders.length, initialized]);
+
+  useEffect(() => {
+    if (folders.length > 0 && !selectedFolderId) {
+      setSelectedFolderId(folders[0].id);
+    }
+  }, [folders, selectedFolderId]);
 
   if (editingFlow) {
     return (
       <AppLayout>
         <FlowEditor
-          flowName={editingFlow}
-          onBack={() => setEditingFlow(null)}
+          flowName={editingFlow.name}
+          onBack={async () => {
+            setEditingFlow(null);
+            await fetchFlows();
+          }}
           allFlows={flows.map(f => f.name)}
+          flowId={editingFlow.id}
         />
       </AppLayout>
     );
   }
 
-  const toggleFolder = (name: string) => {
-    setFolders(prev => prev.map(f => f.name === name ? { ...f, open: !f.open } : f));
+  const toggleFolder = async (id: string) => {
+    const folder = folders.find(f => f.id === id);
+    if (folder) await updateFolder(id, { is_open: !folder.is_open } as any);
   };
 
-  const toggleStatus = (id: number) => {
-    setFlows(prev => prev.map(f => f.id === id ? { ...f, status: f.status === "active" ? "paused" : "active" } : f));
+  const toggleStatus = async (id: string) => {
+    const flow = flows.find(f => f.id === id);
+    if (flow) await updateFlow(id, { status: flow.status === "active" ? "paused" : "active" } as any);
   };
 
-  const openCreateInFolder = (folderName: string) => {
-    setSelectedFolder(folderName);
-    setNewFlow({ name: "", folder: folderName, shortcut: "", delay: "" });
+  const openCreateInFolder = (folderId: string) => {
+    setSelectedFolderId(folderId);
+    setNewFlow({ name: "", shortcut: "", delay: "" });
     setShowCreate(true);
   };
 
-  const createFlow = () => {
+  const createFlow = async () => {
     if (!newFlow.name) return;
-    setFlows(prev => [...prev, {
-      id: Date.now(),
+    await insertFlow({
       name: newFlow.name,
-      folder: selectedFolder,
+      folder_id: selectedFolderId,
       shortcut: newFlow.shortcut || `/${newFlow.name.toLowerCase().replace(/\s/g, "")}`,
       status: "paused",
-    }]);
-    setNewFlow({ name: "", folder: "", shortcut: "", delay: "" });
+      nodes: [{ id: "1", type: "inicio", label: "Início", x: 80, y: 200, color: "bg-red-500", data: { message: "" } }],
+      connections: [],
+    } as any);
+    setNewFlow({ name: "", shortcut: "", delay: "" });
     setShowCreate(false);
+    toast.success("Fluxo criado!");
   };
 
-  const createFolder = () => {
+  const createFolder = async () => {
     if (!newFolderName.trim()) return;
-    setFolders(prev => [...prev, { name: newFolderName.trim(), open: true }]);
+    await insertFolder({ name: newFolderName.trim(), is_open: true, sort_order: folders.length } as any);
     setNewFolderName("");
     setShowCreateFolder(false);
+    toast.success("Pasta criada!");
   };
 
-  const duplicateFlow = (flow: Flow) => {
-    setFlows(prev => [...prev, {
-      ...flow,
-      id: Date.now(),
+  const duplicateFlow = async (flow: DbFlow) => {
+    await insertFlow({
       name: `${flow.name} (cópia)`,
+      folder_id: flow.folder_id,
+      shortcut: flow.shortcut,
       status: "paused",
-    }]);
+      nodes: flow.nodes,
+      connections: flow.connections,
+    } as any);
+    toast.success("Fluxo duplicado!");
   };
 
-  const deleteFlow = (id: number) => {
-    setFlows(prev => prev.filter(f => f.id !== id));
+  const deleteFlow = async (id: string) => {
+    await removeFlow(id);
+    toast.success("Fluxo excluído");
   };
 
-  const deleteFolder = (name: string) => {
-    setFolders(prev => prev.filter(f => f.name !== name));
-    setFlows(prev => prev.filter(f => f.folder !== name));
+  const deleteFolder = async (id: string) => {
+    // Delete flows in folder first
+    const folderFlows = flows.filter(f => f.folder_id === id);
+    for (const f of folderFlows) await removeFlow(f.id);
+    await removeFolder(id);
+    toast.success("Pasta excluída");
   };
 
-  const getFlowsInFolder = (folderName: string) => flows.filter(f => f.folder === folderName);
+  const getFlowsInFolder = (folderId: string) => flows.filter(f => f.folder_id === folderId);
+
+  if (foldersLoading || flowsLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center py-20">
+          <p className="text-sm text-muted-foreground">Carregando fluxos...</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Fluxos de Conversa</h1>
-            <p className="text-sm text-muted-foreground">
-              Crie e gerencie seus funis automatizados de WhatsApp
-            </p>
+            <p className="text-sm text-muted-foreground">Crie e gerencie seus funis automatizados de WhatsApp</p>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowCreateFolder(true)}
-              className="gap-2"
-            >
+            <Button variant="outline" onClick={() => setShowCreateFolder(true)} className="gap-2">
               <FolderPlus className="w-4 h-4" /> Nova Pasta
             </Button>
-            <Button
-              onClick={() => openCreateInFolder(folders[0]?.name || "Principal")}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
-            >
+            <Button onClick={() => openCreateInFolder(folders[0]?.id || "")} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
               <Plus className="w-4 h-4" /> Novo Fluxo
             </Button>
           </div>
         </div>
 
-        {/* Folder Tree */}
         <div className="space-y-2">
           {folders.map(folder => {
-            const folderFlows = getFlowsInFolder(folder.name);
+            const folderFlows = getFlowsInFolder(folder.id);
             return (
-              <div key={folder.name} className="bg-card border border-border rounded-xl overflow-hidden">
-                {/* Folder Header */}
-                <div
-                  className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors"
-                  onClick={() => toggleFolder(folder.name)}
-                >
+              <div key={folder.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => toggleFolder(folder.id)}>
                   <div className="flex items-center gap-2">
-                    {folder.open ? (
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    )}
+                    {folder.is_open ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                     <Folder className="w-4 h-4 text-primary" />
                     <span className="text-sm font-semibold text-foreground">{folder.name}</span>
-                    <Badge variant="secondary" className="text-[10px] ml-1">
-                      {folderFlows.length}
-                    </Badge>
+                    <Badge variant="secondary" className="text-[10px] ml-1">{folderFlows.length}</Badge>
                   </div>
                   <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="w-7 h-7"
-                      onClick={() => openCreateInFolder(folder.name)}
-                      title="Adicionar fluxo"
-                    >
+                    <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => openCreateInFolder(folder.id)} title="Adicionar fluxo">
                       <Plus className="w-3.5 h-3.5" />
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="w-7 h-7">
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        </Button>
+                        <Button variant="ghost" size="icon" className="w-7 h-7"><MoreVertical className="w-3.5 h-3.5" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openCreateInFolder(folder.name)}>
-                          <Plus className="w-3.5 h-3.5 mr-2" /> Adicionar fluxo
-                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openCreateInFolder(folder.id)}><Plus className="w-3.5 h-3.5 mr-2" /> Adicionar fluxo</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => deleteFolder(folder.name)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir pasta
-                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => deleteFolder(folder.id)}><Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir pasta</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
                 </div>
 
-                {/* Folder Flows */}
-                {folder.open && (
+                {folder.is_open && (
                   <div className="border-t border-border">
                     {folderFlows.length === 0 ? (
                       <div className="px-6 py-6 text-center">
                         <GitBranch className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
                         <p className="text-xs text-muted-foreground">Nenhum fluxo nesta pasta</p>
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="text-xs mt-1"
-                          onClick={() => openCreateInFolder(folder.name)}
-                        >
-                          Criar primeiro fluxo
-                        </Button>
+                        <Button variant="link" size="sm" className="text-xs mt-1" onClick={() => openCreateInFolder(folder.id)}>Criar primeiro fluxo</Button>
                       </div>
                     ) : (
                       <table className="w-full text-sm">
@@ -238,52 +258,27 @@ export default function Flows() {
                                 <code className="text-xs bg-muted px-2 py-1 rounded text-foreground">{flow.shortcut}</code>
                               </td>
                               <td className="py-2.5 px-5 text-center">
-                                <Badge className={`text-[10px] border-0 ${
-                                  flow.status === "active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
-                                }`}>
+                                <Badge className={`text-[10px] border-0 ${flow.status === "active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
                                   {flow.status === "active" ? "Ativo" : "Pausado"}
                                 </Badge>
                               </td>
                               <td className="py-2.5 px-5 text-right">
                                 <div className="flex items-center justify-end gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="w-7 h-7"
-                                    onClick={() => setEditingFlow(flow.name)}
-                                    title="Editar fluxo"
-                                  >
+                                  <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => setEditingFlow({ id: flow.id, name: flow.name })} title="Editar fluxo">
                                     <Pencil className="w-3.5 h-3.5" />
                                   </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="w-7 h-7"
-                                    onClick={() => toggleStatus(flow.id)}
-                                    title={flow.status === "active" ? "Pausar" : "Ativar"}
-                                  >
+                                  <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => toggleStatus(flow.id)} title={flow.status === "active" ? "Pausar" : "Ativar"}>
                                     {flow.status === "active" ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                                   </Button>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="w-7 h-7">
-                                        <MoreVertical className="w-3.5 h-3.5" />
-                                      </Button>
+                                      <Button variant="ghost" size="icon" className="w-7 h-7"><MoreVertical className="w-3.5 h-3.5" /></Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                      <DropdownMenuItem onClick={() => duplicateFlow(flow)}>
-                                        <Copy className="w-3.5 h-3.5 mr-2" /> Duplicar
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem>
-                                        <Share2 className="w-3.5 h-3.5 mr-2" /> Compartilhar
-                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => duplicateFlow(flow)}><Copy className="w-3.5 h-3.5 mr-2" /> Duplicar</DropdownMenuItem>
+                                      <DropdownMenuItem><Share2 className="w-3.5 h-3.5 mr-2" /> Compartilhar</DropdownMenuItem>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        className="text-destructive"
-                                        onClick={() => deleteFlow(flow.id)}
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir
-                                      </DropdownMenuItem>
+                                      <DropdownMenuItem className="text-destructive" onClick={() => deleteFlow(flow.id)}><Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir</DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 </div>
@@ -301,74 +296,40 @@ export default function Flows() {
         </div>
       </div>
 
-      {/* Modal: Adicionar Fluxo */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Adicionar Fluxo</DialogTitle>
             <DialogDescription>
-              Pasta: <span className="font-semibold text-foreground">{selectedFolder}</span>
+              Pasta: <span className="font-semibold text-foreground">{folders.find(f => f.id === selectedFolderId)?.name}</span>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Nome do Fluxo</label>
-              <Input
-                value={newFlow.name}
-                onChange={e => setNewFlow(p => ({ ...p, name: e.target.value }))}
-                placeholder="Ex: PARTE 01 - ATENDIMENTO INICIAL"
-                className="mt-1"
-              />
+              <Input value={newFlow.name} onChange={e => setNewFlow(p => ({ ...p, name: e.target.value }))} placeholder="Ex: PARTE 01 - ATENDIMENTO INICIAL" className="mt-1" />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Pasta</label>
-              <Select value={selectedFolder} onValueChange={v => setSelectedFolder(v)}>
+              <Select value={selectedFolderId} onValueChange={v => setSelectedFolderId(v)}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {folders.map(f => (
-                    <SelectItem key={f.name} value={f.name}>{f.name}</SelectItem>
-                  ))}
+                  {folders.map(f => (<SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Atalhos</label>
-              <Input
-                value={newFlow.shortcut}
-                onChange={e => setNewFlow(p => ({ ...p, shortcut: e.target.value }))}
-                placeholder="Ex: /atendimento1"
-                className="mt-1"
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Palavras curtas para localizar ou acionar rapidamente o fluxo
-              </p>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Atraso inicial (opcional)</label>
-              <Select value={newFlow.delay} onValueChange={v => setNewFlow(p => ({ ...p, delay: v }))}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Sem atraso" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem atraso</SelectItem>
-                  <SelectItem value="5s">5 segundos</SelectItem>
-                  <SelectItem value="10s">10 segundos</SelectItem>
-                  <SelectItem value="1m">1 minuto</SelectItem>
-                  <SelectItem value="15m">15 minutos</SelectItem>
-                  <SelectItem value="1h">1 hora</SelectItem>
-                  <SelectItem value="24h">24 horas</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input value={newFlow.shortcut} onChange={e => setNewFlow(p => ({ ...p, shortcut: e.target.value }))} placeholder="Ex: /atendimento1" className="mt-1" />
             </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancelar</Button>
-            <Button onClick={createFlow} className="bg-primary text-primary-foreground gap-2">
-              <Plus className="w-4 h-4" /> Adicionar
-            </Button>
+            <Button onClick={createFlow} className="bg-primary text-primary-foreground gap-2"><Plus className="w-4 h-4" /> Adicionar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Modal: Nova Pasta */}
       <Dialog open={showCreateFolder} onOpenChange={setShowCreateFolder}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
@@ -377,12 +338,7 @@ export default function Flows() {
           </DialogHeader>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Nome da Pasta</label>
-            <Input
-              value={newFolderName}
-              onChange={e => setNewFolderName(e.target.value)}
-              placeholder="Ex: Vendas Premium"
-              className="mt-1"
-            />
+            <Input value={newFolderName} onChange={e => setNewFolderName(e.target.value)} placeholder="Ex: Vendas Premium" className="mt-1" />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateFolder(false)}>Cancelar</Button>
