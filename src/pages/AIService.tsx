@@ -11,28 +11,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useSupabaseTable } from "@/hooks/useSupabaseData";
 
-interface BotConfig {
-  id: number;
+interface DbBot {
+  id: string;
   name: string;
-  created: string;
-  status: "active" | "draft";
+  status: string;
   conversations: number;
-  welcomeMessage: string;
-  keywords: string[];
-  training: string;
-  autoTransfer: boolean;
-  transferAfter: number;
-  assignedFlow: string;
-  responseDelay: number;
-  maxSimultaneous: number;
+  welcome_message: string | null;
+  keywords: string[] | null;
+  training: string | null;
+  auto_transfer: boolean | null;
+  transfer_after: number | null;
+  assigned_flow: string | null;
+  response_delay: number | null;
+  max_simultaneous: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 const AVAILABLE_FLOWS = ["Boas-vindas", "Qualificação de Lead", "Suporte Nível 1", "Pós-venda", "Remarketing 7 dias"];
 
 export default function AIService() {
-  const [bots, setBots] = useState<BotConfig[]>([]);
-  const [configuring, setConfiguring] = useState<number | null>(null);
+  const { data: bots, loading, insert, update, remove } = useSupabaseTable<DbBot>("ai_bots");
+  const [configuring, setConfiguring] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [newKeyword, setNewKeyword] = useState("");
@@ -41,61 +43,64 @@ export default function AIService() {
 
   const bot = configuring ? bots.find(b => b.id === configuring) : null;
 
-  const updateBot = (id: number, updates: Partial<BotConfig>) => {
-    setBots(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+  const updateBot = async (id: string, updates: Partial<DbBot>) => {
+    await update(id, updates as any);
   };
 
-  const addKeyword = () => {
+  const addKeyword = async () => {
     if (!newKeyword || !bot) return;
-    updateBot(bot.id, { keywords: [...bot.keywords, newKeyword] });
+    await updateBot(bot.id, { keywords: [...(bot.keywords || []), newKeyword] });
     setNewKeyword("");
   };
 
-  const removeKeyword = (kw: string) => {
+  const removeKeyword = async (kw: string) => {
     if (!bot) return;
-    updateBot(bot.id, { keywords: bot.keywords.filter(k => k !== kw) });
+    await updateBot(bot.id, { keywords: (bot.keywords || []).filter(k => k !== kw) });
   };
 
-  const createBot = () => {
+  const createBot = async () => {
     const name = (document.getElementById("new-bot-name") as HTMLInputElement)?.value;
     if (!name) return;
-    setBots(prev => [...prev, {
-      id: Date.now(), name, created: new Date().toLocaleDateString("pt-BR"),
-      status: "draft", conversations: 0, welcomeMessage: "", keywords: [],
-      training: "", autoTransfer: false, transferAfter: 3, assignedFlow: "",
-      responseDelay: 2, maxSimultaneous: 50,
-    }]);
+    await insert({
+      name, status: "draft", conversations: 0, welcome_message: "",
+      keywords: [], training: "", auto_transfer: false, transfer_after: 3,
+      assigned_flow: "", response_delay: 2, max_simultaneous: 50,
+    } as any);
     setShowCreate(false);
     toast.success("Robô criado com sucesso!");
   };
 
-  const toggleBotStatus = (id: number) => {
+  const toggleBotStatus = async (id: string) => {
     const b = bots.find(x => x.id === id);
     if (!b) return;
     const newStatus = b.status === "active" ? "draft" : "active";
-    if (newStatus === "active" && !b.welcomeMessage) {
+    if (newStatus === "active" && !b.welcome_message) {
       toast.error("Configure uma mensagem inicial antes de ativar");
       return;
     }
-    updateBot(id, { status: newStatus });
+    await updateBot(id, { status: newStatus });
     toast.success(newStatus === "active" ? "Robô ativado!" : "Robô desativado");
   };
 
-  const importAsBot = () => {
+  const importAsBot = async () => {
     if (!importScript || !importName) return;
     const keywords = importScript.match(/"([^"]+)"/g)?.map(k => k.replace(/"/g, "")) || [];
-    setBots(prev => [...prev, {
-      id: Date.now(), name: importName, created: new Date().toLocaleDateString("pt-BR"),
-      status: "draft", conversations: 0, welcomeMessage: "Olá! Como posso ajudar?",
-      keywords: keywords.slice(0, 5),
-      training: importScript, autoTransfer: true, transferAfter: 3,
-      assignedFlow: "", responseDelay: 2, maxSimultaneous: 50,
-    }]);
+    await insert({
+      name: importName, status: "draft", conversations: 0,
+      welcome_message: "Olá! Como posso ajudar?",
+      keywords: keywords.slice(0, 5), training: importScript,
+      auto_transfer: true, transfer_after: 3, assigned_flow: "",
+      response_delay: 2, max_simultaneous: 50,
+    } as any);
     setImportScript("");
     setImportName("");
     setShowImport(false);
     toast.success("Script importado e convertido em robô de atendimento!");
   };
+
+  if (loading) {
+    return <AppLayout><div className="flex items-center justify-center py-20"><p className="text-sm text-muted-foreground">Carregando...</p></div></AppLayout>;
+  }
 
   if (bot) {
     return (
@@ -103,9 +108,7 @@ export default function AIService() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" onClick={() => setConfiguring(null)}>
-                <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
-              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setConfiguring(null)}><ArrowLeft className="w-4 h-4 mr-1" /> Voltar</Button>
               <h1 className="text-xl font-bold text-foreground">{bot.name}</h1>
               <Badge className={`text-[10px] border-0 ${bot.status === "active" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
                 {bot.status === "active" ? "Ativo" : "Rascunho"}
@@ -133,7 +136,7 @@ export default function AIService() {
                 <CardContent className="p-5 space-y-4">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Mensagem Inicial</label>
-                    <Textarea value={bot.welcomeMessage} onChange={e => updateBot(bot.id, { welcomeMessage: e.target.value })} className="mt-1 min-h-[80px]" placeholder="Mensagem de boas-vindas do robô..." />
+                    <Textarea value={bot.welcome_message || ""} onChange={e => updateBot(bot.id, { welcome_message: e.target.value })} className="mt-1 min-h-[80px]" placeholder="Mensagem de boas-vindas do robô..." />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Palavras-chave de ativação</label>
@@ -142,7 +145,7 @@ export default function AIService() {
                       <Button size="sm" onClick={addKeyword} className="bg-primary text-primary-foreground">Adicionar</Button>
                     </div>
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      {bot.keywords.map(kw => (
+                      {(bot.keywords || []).map(kw => (
                         <Badge key={kw} variant="secondary" className="gap-1 cursor-pointer" onClick={() => removeKeyword(kw)}>{kw} ×</Badge>
                       ))}
                     </div>
@@ -150,11 +153,11 @@ export default function AIService() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Delay de resposta (segundos)</label>
-                      <Input type="number" value={bot.responseDelay} onChange={e => updateBot(bot.id, { responseDelay: parseInt(e.target.value) || 1 })} className="mt-1" min={1} max={30} />
+                      <Input type="number" value={bot.response_delay || 2} onChange={e => updateBot(bot.id, { response_delay: parseInt(e.target.value) || 1 })} className="mt-1" min={1} max={30} />
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Máx. atendimentos simultâneos</label>
-                      <Input type="number" value={bot.maxSimultaneous} onChange={e => updateBot(bot.id, { maxSimultaneous: parseInt(e.target.value) || 10 })} className="mt-1" min={1} max={500} />
+                      <Input type="number" value={bot.max_simultaneous || 5} onChange={e => updateBot(bot.id, { max_simultaneous: parseInt(e.target.value) || 10 })} className="mt-1" min={1} max={500} />
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
@@ -173,7 +176,7 @@ export default function AIService() {
                 <CardContent className="p-5 space-y-4">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Base de Conhecimento (Texto)</label>
-                    <Textarea value={bot.training} onChange={e => updateBot(bot.id, { training: e.target.value })} className="mt-1 min-h-[150px]" placeholder="Insira informações sobre sua empresa, produtos, serviços, FAQ..." />
+                    <Textarea value={bot.training || ""} onChange={e => updateBot(bot.id, { training: e.target.value })} className="mt-1 min-h-[150px]" placeholder="Insira informações sobre sua empresa, produtos, serviços, FAQ..." />
                   </div>
                   <div className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 transition-colors">
                     <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
@@ -199,12 +202,12 @@ export default function AIService() {
                       <p className="text-sm font-medium text-foreground">Transferência automática para humano</p>
                       <p className="text-xs text-muted-foreground">Transferir após tentativas sem resolução</p>
                     </div>
-                    <Switch checked={bot.autoTransfer} onCheckedChange={c => updateBot(bot.id, { autoTransfer: c })} />
+                    <Switch checked={bot.auto_transfer || false} onCheckedChange={c => updateBot(bot.id, { auto_transfer: c })} />
                   </div>
-                  {bot.autoTransfer && (
+                  {bot.auto_transfer && (
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Transferir após quantas tentativas?</label>
-                      <Input type="number" value={bot.transferAfter} onChange={e => updateBot(bot.id, { transferAfter: parseInt(e.target.value) || 3 })} className="mt-1 w-24" min={1} max={10} />
+                      <Input type="number" value={bot.transfer_after || 3} onChange={e => updateBot(bot.id, { transfer_after: parseInt(e.target.value) || 3 })} className="mt-1 w-24" min={1} max={10} />
                     </div>
                   )}
                 </CardContent>
@@ -216,18 +219,16 @@ export default function AIService() {
                 <CardContent className="p-5 space-y-4">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Fluxo de atendimento vinculado</label>
-                    <Select value={bot.assignedFlow} onValueChange={v => updateBot(bot.id, { assignedFlow: v })}>
+                    <Select value={bot.assigned_flow || ""} onValueChange={v => updateBot(bot.id, { assigned_flow: v })}>
                       <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione um fluxo" /></SelectTrigger>
-                      <SelectContent>
-                        {AVAILABLE_FLOWS.map(f => (<SelectItem key={f} value={f}>{f}</SelectItem>))}
-                      </SelectContent>
+                      <SelectContent>{AVAILABLE_FLOWS.map(f => (<SelectItem key={f} value={f}>{f}</SelectItem>))}</SelectContent>
                     </Select>
                   </div>
-                  {bot.assignedFlow && (
+                  {bot.assigned_flow && (
                     <div className="bg-success/5 border border-success/20 rounded-lg p-4">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-success" />
-                        <span className="text-sm font-medium text-foreground">Fluxo "{bot.assignedFlow}" vinculado</span>
+                        <span className="text-sm font-medium text-foreground">Fluxo "{bot.assigned_flow}" vinculado</span>
                       </div>
                     </div>
                   )}
@@ -272,12 +273,8 @@ export default function AIService() {
             <p className="text-sm text-muted-foreground">Gerencie seus robôs de atendimento automatizado</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowImport(true)} className="gap-2">
-              <Upload className="w-4 h-4" /> Importar Script
-            </Button>
-            <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
-              <Plus className="w-4 h-4" /> Novo Robô
-            </Button>
+            <Button variant="outline" onClick={() => setShowImport(true)} className="gap-2"><Upload className="w-4 h-4" /> Importar Script</Button>
+            <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"><Plus className="w-4 h-4" /> Novo Robô</Button>
           </div>
         </div>
 
@@ -285,7 +282,7 @@ export default function AIService() {
           <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-center py-16 text-center">
             <Bot className="w-12 h-12 text-muted-foreground/20 mb-4" />
             <p className="text-sm text-muted-foreground">Nenhum robô criado</p>
-            <p className="text-xs text-muted-foreground mt-1">Crie um robô ou importe um script para começar o atendimento automático.</p>
+            <p className="text-xs text-muted-foreground mt-1">Crie um robô ou importe um script para começar.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -299,7 +296,7 @@ export default function AIService() {
                       </div>
                       <div>
                         <h3 className="text-sm font-semibold text-foreground">{b.name}</h3>
-                        <p className="text-[10px] text-muted-foreground">Criado em {b.created}</p>
+                        <p className="text-[10px] text-muted-foreground">Criado em {new Date(b.created_at).toLocaleDateString("pt-BR")}</p>
                       </div>
                     </div>
                     <Badge className={`text-[10px] border-0 ${b.status === "active" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>

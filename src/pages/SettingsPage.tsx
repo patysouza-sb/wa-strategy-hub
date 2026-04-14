@@ -10,31 +10,33 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useSupabaseTable } from "@/hooks/useSupabaseData";
 
-interface WhatsAppConnection {
-  id: number;
+interface DbConnection {
+  id: string;
   name: string;
   phone: string;
-  status: "connected" | "disconnected" | "connecting";
-  welcomeFlow: string;
-  defaultFlow: string;
-  inactivityTime: string;
-  closedFlow: string;
-  lastSeen?: string;
+  status: string;
+  welcome_flow: string | null;
+  default_flow: string | null;
+  inactivity_time: string | null;
+  closed_flow: string | null;
+  last_seen: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 const FLOWS = ["Boas-vindas Padrão", "Boas-vindas VIP", "FAQ Automático", "Resposta Geral", "Pesquisa de Satisfação", "Encerramento Padrão"];
 
 export default function SettingsPage() {
-  const [connections, setConnections] = useState<WhatsAppConnection[]>([]);
+  const { data: connections, loading, insert, update, remove } = useSupabaseTable<DbConnection>("whatsapp_connections");
   const [showAddConnection, setShowAddConnection] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [qrExpired, setQrExpired] = useState(false);
   const [qrTimer, setQrTimer] = useState(60);
   const [newConn, setNewConn] = useState({ name: "", phone: "", welcomeFlow: "Boas-vindas Padrão", defaultFlow: "Resposta Geral", inactivityTime: "24h", closedFlow: "Pesquisa de Satisfação" });
-  const [editingConn, setEditingConn] = useState<WhatsAppConnection | null>(null);
+  const [editingConn, setEditingConn] = useState<DbConnection | null>(null);
 
-  // QR Code timer
   useEffect(() => {
     if (!showQRCode || qrExpired) return;
     if (qrTimer <= 0) { setQrExpired(true); return; }
@@ -59,29 +61,44 @@ export default function SettingsPage() {
     toast.info("QR Code atualizado!");
   };
 
-  const confirmQRConnection = () => {
-    setConnections(prev => [...prev, {
-      id: Date.now(), ...newConn, status: "connecting" as const,
-    }]);
-    setTimeout(() => {
-      setConnections(prev => prev.map(c => c.status === "connecting" ? { ...c, status: "connected", lastSeen: "Agora" } : c));
-    }, 2000);
+  const confirmQRConnection = async () => {
+    const inserted = await insert({
+      name: newConn.name,
+      phone: newConn.phone,
+      status: "connected",
+      welcome_flow: newConn.welcomeFlow,
+      default_flow: newConn.defaultFlow,
+      inactivity_time: newConn.inactivityTime,
+      closed_flow: newConn.closedFlow,
+      last_seen: new Date().toISOString(),
+    } as any);
     setNewConn({ name: "", phone: "", welcomeFlow: "Boas-vindas Padrão", defaultFlow: "Resposta Geral", inactivityTime: "24h", closedFlow: "Pesquisa de Satisfação" });
     setShowQRCode(false);
     toast.success("WhatsApp conectado com sucesso!");
   };
 
-  const toggleConnection = (id: number) => {
-    setConnections(prev => prev.map(c => c.id === id ? { ...c, status: c.status === "connected" ? "disconnected" : "connecting" } : c));
-    setTimeout(() => {
-      setConnections(prev => prev.map(c => c.status === "connecting" ? { ...c, status: "connected", lastSeen: "Agora" } : c));
-    }, 2000);
+  const toggleConnection = async (id: string) => {
+    const conn = connections.find(c => c.id === id);
+    if (!conn) return;
+    const newStatus = conn.status === "connected" ? "disconnected" : "connected";
+    await update(id, { status: newStatus, last_seen: new Date().toISOString() } as any);
   };
 
-  const removeConnection = (id: number) => {
-    setConnections(prev => prev.filter(c => c.id !== id));
+  const removeConnection = async (id: string) => {
+    await remove(id);
     toast.success("Conexão removida");
   };
+
+  const updateConnField = async (id: string, field: string, value: string) => {
+    await update(id, { [field]: value } as any);
+    if (editingConn && editingConn.id === id) {
+      setEditingConn({ ...editingConn, [field]: value });
+    }
+  };
+
+  if (loading) {
+    return <AppLayout><div className="flex items-center justify-center py-20"><p className="text-sm text-muted-foreground">Carregando...</p></div></AppLayout>;
+  }
 
   return (
     <AppLayout>
@@ -112,7 +129,7 @@ export default function SettingsPage() {
                 <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                   <Phone className="w-12 h-12 text-muted-foreground/20 mb-4" />
                   <p className="text-sm text-muted-foreground">Nenhum número conectado</p>
-                  <p className="text-xs text-muted-foreground mt-1">Adicione seu número de WhatsApp para começar a usar o sistema.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Adicione seu número de WhatsApp para começar.</p>
                 </CardContent>
               </Card>
             ) : (
@@ -123,25 +140,18 @@ export default function SettingsPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                            conn.status === "connected" ? "bg-success/10" : conn.status === "connecting" ? "bg-primary/10" : "bg-muted"
+                            conn.status === "connected" ? "bg-success/10" : "bg-muted"
                           }`}>
-                            {conn.status === "connected" ? <Wifi className="w-5 h-5 text-success" /> :
-                             conn.status === "connecting" ? <Wifi className="w-5 h-5 text-primary animate-pulse" /> :
-                             <WifiOff className="w-5 h-5 text-muted-foreground" />}
+                            {conn.status === "connected" ? <Wifi className="w-5 h-5 text-success" /> : <WifiOff className="w-5 h-5 text-muted-foreground" />}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
                               <h3 className="text-sm font-semibold text-foreground">{conn.name}</h3>
-                              <Badge className={`text-[10px] border-0 ${
-                                conn.status === "connected" ? "bg-success/10 text-success" :
-                                conn.status === "connecting" ? "bg-primary/10 text-primary" :
-                                "bg-muted text-muted-foreground"
-                              }`}>
-                                {conn.status === "connected" ? "Conectado" : conn.status === "connecting" ? "Conectando..." : "Desconectado"}
+                              <Badge className={`text-[10px] border-0 ${conn.status === "connected" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
+                                {conn.status === "connected" ? "Conectado" : "Desconectado"}
                               </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">{conn.phone}</p>
-                            {conn.lastSeen && <p className="text-[10px] text-muted-foreground">Última atividade: {conn.lastSeen}</p>}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -165,24 +175,15 @@ export default function SettingsPage() {
             <Card className="border border-border shadow-none">
               <CardContent className="p-6 space-y-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Transcrição automática de áudio</p>
-                    <p className="text-xs text-muted-foreground">Transcreve automaticamente áudios recebidos</p>
-                  </div>
+                  <div><p className="text-sm font-medium text-foreground">Transcrição automática de áudio</p><p className="text-xs text-muted-foreground">Transcreve automaticamente áudios recebidos</p></div>
                   <Switch />
                 </div>
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Aceitar chamadas de voz</p>
-                    <p className="text-xs text-muted-foreground">Permitir chamadas de voz pelo WhatsApp</p>
-                  </div>
+                  <div><p className="text-sm font-medium text-foreground">Aceitar chamadas de voz</p><p className="text-xs text-muted-foreground">Permitir chamadas de voz pelo WhatsApp</p></div>
                   <Switch />
                 </div>
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Separar atendimentos por usuário</p>
-                    <p className="text-xs text-muted-foreground">Cada atendente vê apenas seus contatos</p>
-                  </div>
+                  <div><p className="text-sm font-medium text-foreground">Separar atendimentos por usuário</p><p className="text-xs text-muted-foreground">Cada atendente vê apenas seus contatos</p></div>
                   <Switch />
                 </div>
               </CardContent>
@@ -193,17 +194,11 @@ export default function SettingsPage() {
             <Card className="border border-border shadow-none">
               <CardContent className="p-6 space-y-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Notificações por e-mail</p>
-                    <p className="text-xs text-muted-foreground">Receba alertas de novas mensagens</p>
-                  </div>
+                  <div><p className="text-sm font-medium text-foreground">Notificações por e-mail</p><p className="text-xs text-muted-foreground">Receba alertas de novas mensagens</p></div>
                   <Switch />
                 </div>
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Notificações sonoras</p>
-                    <p className="text-xs text-muted-foreground">Som ao receber novas mensagens</p>
-                  </div>
+                  <div><p className="text-sm font-medium text-foreground">Notificações sonoras</p><p className="text-xs text-muted-foreground">Som ao receber novas mensagens</p></div>
                   <Switch defaultChecked />
                 </div>
               </CardContent>
@@ -213,18 +208,9 @@ export default function SettingsPage() {
           <TabsContent value="account" className="mt-4">
             <Card className="border border-border shadow-none">
               <CardContent className="p-6 space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Nome</label>
-                  <Input defaultValue="Patricia" className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">E-mail</label>
-                  <Input placeholder="seu@email.com" className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Função</label>
-                  <Input defaultValue="Admin" disabled className="mt-1" />
-                </div>
+                <div><label className="text-xs font-medium text-muted-foreground">Nome</label><Input defaultValue="Patricia" className="mt-1" /></div>
+                <div><label className="text-xs font-medium text-muted-foreground">E-mail</label><Input placeholder="seu@email.com" className="mt-1" /></div>
+                <div><label className="text-xs font-medium text-muted-foreground">Função</label><Input defaultValue="Admin" disabled className="mt-1" /></div>
                 <Button className="bg-primary text-primary-foreground">Salvar Alterações</Button>
               </CardContent>
             </Card>
@@ -232,19 +218,12 @@ export default function SettingsPage() {
         </Tabs>
       </div>
 
-      {/* Add Connection Dialog */}
       <Dialog open={showAddConnection} onOpenChange={setShowAddConnection}>
         <DialogContent>
           <DialogHeader><DialogTitle>Adicionar Número WhatsApp</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Nome da Conexão</label>
-              <Input value={newConn.name} onChange={e => setNewConn(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Atendimento Principal" className="mt-1" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Número do WhatsApp</label>
-              <Input value={newConn.phone} onChange={e => setNewConn(p => ({ ...p, phone: e.target.value }))} placeholder="+55 11 99999-0000" className="mt-1" />
-            </div>
+            <div><label className="text-xs font-medium text-muted-foreground">Nome da Conexão</label><Input value={newConn.name} onChange={e => setNewConn(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Atendimento Principal" className="mt-1" /></div>
+            <div><label className="text-xs font-medium text-muted-foreground">Número do WhatsApp</label><Input value={newConn.phone} onChange={e => setNewConn(p => ({ ...p, phone: e.target.value }))} placeholder="+55 11 99999-0000" className="mt-1" /></div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Fluxo de Boas-vindas</label>
@@ -269,7 +248,6 @@ export default function SettingsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* QR Code Dialog */}
       <Dialog open={showQRCode} onOpenChange={(open) => { if (!open) setShowQRCode(false); }}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><QrCode className="w-5 h-5" /> Escanear QR Code</DialogTitle></DialogHeader>
@@ -282,22 +260,17 @@ export default function SettingsPage() {
                 <div className="flex flex-col items-center gap-3 text-center">
                   <QrCode className="w-16 h-16 text-muted-foreground/30" />
                   <p className="text-xs text-muted-foreground">QR Code expirado</p>
-                  <Button size="sm" variant="outline" onClick={refreshQR} className="gap-1.5">
-                    <RefreshCw className="w-3.5 h-3.5" /> Atualizar
-                  </Button>
+                  <Button size="sm" variant="outline" onClick={refreshQR} className="gap-1.5"><RefreshCw className="w-3.5 h-3.5" /> Atualizar</Button>
                 </div>
               ) : (
                 <>
-                  {/* Simulated QR Code pattern */}
                   <div className="grid grid-cols-11 gap-[2px] p-4">
                     {Array.from({ length: 121 }, (_, i) => {
                       const row = Math.floor(i / 11);
                       const col = i % 11;
                       const isCorner = (row < 3 && col < 3) || (row < 3 && col > 7) || (row > 7 && col < 3);
                       const isFilled = isCorner || Math.random() > 0.5;
-                      return (
-                        <div key={i} className={`w-3.5 h-3.5 rounded-[1px] ${isFilled ? "bg-foreground" : "bg-transparent"}`} />
-                      );
+                      return (<div key={i} className={`w-3.5 h-3.5 rounded-[1px] ${isFilled ? "bg-foreground" : "bg-transparent"}`} />);
                     })}
                   </div>
                   <div className="absolute bottom-3 right-3 bg-background/80 backdrop-blur-sm rounded-md px-2 py-1">
@@ -313,14 +286,11 @@ export default function SettingsPage() {
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setShowQRCode(false)}>Cancelar</Button>
-            <Button onClick={confirmQRConnection} className="bg-success hover:bg-success/90 text-white gap-2">
-              <Wifi className="w-4 h-4" /> Já escaneei, conectar
-            </Button>
+            <Button onClick={confirmQRConnection} className="bg-success hover:bg-success/90 text-white gap-2"><Wifi className="w-4 h-4" /> Já escaneei, conectar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Connection Dialog */}
       <Dialog open={!!editingConn} onOpenChange={() => setEditingConn(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Configurar {editingConn?.name}</DialogTitle></DialogHeader>
@@ -329,20 +299,14 @@ export default function SettingsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Fluxo de Boas-vindas</label>
-                  <Select value={editingConn.welcomeFlow} onValueChange={v => {
-                    setEditingConn({ ...editingConn, welcomeFlow: v });
-                    setConnections(prev => prev.map(c => c.id === editingConn.id ? { ...c, welcomeFlow: v } : c));
-                  }}>
+                  <Select value={editingConn.welcome_flow || ""} onValueChange={v => updateConnField(editingConn.id, "welcome_flow", v)}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>{FLOWS.map(f => (<SelectItem key={f} value={f}>{f}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Fluxo Padrão</label>
-                  <Select value={editingConn.defaultFlow} onValueChange={v => {
-                    setEditingConn({ ...editingConn, defaultFlow: v });
-                    setConnections(prev => prev.map(c => c.id === editingConn.id ? { ...c, defaultFlow: v } : c));
-                  }}>
+                  <Select value={editingConn.default_flow || ""} onValueChange={v => updateConnField(editingConn.id, "default_flow", v)}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>{FLOWS.map(f => (<SelectItem key={f} value={f}>{f}</SelectItem>))}</SelectContent>
                   </Select>
@@ -350,10 +314,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Tempo de Inatividade</label>
-                <Select value={editingConn.inactivityTime} onValueChange={v => {
-                  setEditingConn({ ...editingConn, inactivityTime: v });
-                  setConnections(prev => prev.map(c => c.id === editingConn.id ? { ...c, inactivityTime: v } : c));
-                }}>
+                <Select value={editingConn.inactivity_time || "24h"} onValueChange={v => updateConnField(editingConn.id, "inactivity_time", v)}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="6h">6 horas</SelectItem>

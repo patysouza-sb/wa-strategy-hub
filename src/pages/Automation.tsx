@@ -11,17 +11,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useSupabaseTable } from "@/hooks/useSupabaseData";
 
-interface AutoRule {
-  id: number;
+interface DbRule {
+  id: string;
   name: string;
   trigger: string;
-  triggerType: string;
+  trigger_type: string;
   action: string;
-  status: "active" | "paused";
-  message?: string;
-  flowName?: string;
-  delay?: string;
+  status: string;
+  message: string | null;
+  flow_name: string | null;
+  delay: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 const TRIGGER_TYPES = [
@@ -47,44 +50,59 @@ const KANBAN_STAGES = ["Novo contato", "Interessado", "Proposta", "Negociação"
 const AVAILABLE_TAGS = ["Lead", "Cliente", "VIP", "Inativo", "Prospect"];
 
 export default function Automation() {
-  const [rules, setRules] = useState<AutoRule[]>([]);
+  const { data: rules, loading, insert, update, remove } = useSupabaseTable<DbRule>("automation_rules");
   const [showCreate, setShowCreate] = useState(false);
   const [showFlowCreate, setShowFlowCreate] = useState(false);
   const [newRule, setNewRule] = useState({ name: "", triggerType: "inactivity", action: "send_message", message: "", flowName: "", delay: "", tagValue: "", stageValue: "" });
 
-  const toggleRule = (id: number) => {
-    setRules(prev => prev.map(r => r.id === id ? { ...r, status: r.status === "active" ? "paused" : "active" } : r));
+  const toggleRule = async (id: string) => {
+    const r = rules.find(x => x.id === id);
+    if (!r) return;
+    await update(id, { status: r.status === "active" ? "paused" : "active" } as any);
     toast.success("Status atualizado!");
   };
 
-  const deleteRule = (id: number) => {
-    setRules(prev => prev.filter(r => r.id !== id));
+  const deleteRule = async (id: string) => {
+    await remove(id);
     toast.success("Regra removida");
   };
 
-  const duplicateRule = (id: number) => {
+  const duplicateRule = async (id: string) => {
     const rule = rules.find(r => r.id === id);
     if (!rule) return;
-    setRules(prev => [...prev, { ...rule, id: Date.now(), name: `${rule.name} (cópia)`, status: "paused" }]);
+    await insert({
+      name: `${rule.name} (cópia)`,
+      trigger: rule.trigger,
+      trigger_type: rule.trigger_type,
+      action: rule.action,
+      status: "paused",
+      message: rule.message,
+      flow_name: rule.flow_name,
+      delay: rule.delay,
+    } as any);
     toast.success("Regra duplicada");
   };
 
-  const createRule = () => {
+  const createRule = async () => {
     if (!newRule.name) return;
     const trigger = TRIGGER_TYPES.find(t => t.value === newRule.triggerType)?.label || newRule.triggerType;
     const fullTrigger = newRule.triggerType === "tag" ? `Tag: ${newRule.tagValue || "Lead"}` :
       newRule.triggerType === "stage" ? `Etapa: ${newRule.stageValue || "Novo contato"}` : trigger;
-    setRules(prev => [...prev, {
-      id: Date.now(), name: newRule.name, trigger: fullTrigger, triggerType: newRule.triggerType,
-      action: newRule.action, status: "paused", message: newRule.message,
-      flowName: newRule.flowName, delay: newRule.delay,
-    }]);
+    await insert({
+      name: newRule.name, trigger: fullTrigger, trigger_type: newRule.triggerType,
+      action: newRule.action, status: "paused", message: newRule.message || "",
+      flow_name: newRule.flowName || "", delay: newRule.delay || "",
+    } as any);
     setNewRule({ name: "", triggerType: "inactivity", action: "send_message", message: "", flowName: "", delay: "", tagValue: "", stageValue: "" });
     setShowCreate(false);
     toast.success("Regra criada com sucesso!");
   };
 
   const activeCount = rules.filter(r => r.status === "active").length;
+
+  if (loading) {
+    return <AppLayout><div className="flex items-center justify-center py-20"><p className="text-sm text-muted-foreground">Carregando...</p></div></AppLayout>;
+  }
 
   return (
     <AppLayout>
@@ -108,37 +126,25 @@ export default function Automation() {
           <Card className="border border-border shadow-none">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"><Zap className="w-5 h-5 text-primary" /></div>
-              <div>
-                <p className="text-lg font-bold text-foreground">{rules.length}</p>
-                <p className="text-[10px] text-muted-foreground">Regras criadas</p>
-              </div>
+              <div><p className="text-lg font-bold text-foreground">{rules.length}</p><p className="text-[10px] text-muted-foreground">Regras criadas</p></div>
             </CardContent>
           </Card>
           <Card className="border border-border shadow-none">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center"><CheckCircle2 className="w-5 h-5 text-success" /></div>
-              <div>
-                <p className="text-lg font-bold text-foreground">{activeCount}</p>
-                <p className="text-[10px] text-muted-foreground">Ativas agora</p>
-              </div>
+              <div><p className="text-lg font-bold text-foreground">{activeCount}</p><p className="text-[10px] text-muted-foreground">Ativas agora</p></div>
             </CardContent>
           </Card>
           <Card className="border border-border shadow-none">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center"><GitBranch className="w-5 h-5 text-blue-500" /></div>
-              <div>
-                <p className="text-lg font-bold text-foreground">{rules.filter(r => r.action === "start_flow").length}</p>
-                <p className="text-[10px] text-muted-foreground">Vinculadas a fluxos</p>
-              </div>
+              <div><p className="text-lg font-bold text-foreground">{rules.filter(r => r.action === "start_flow").length}</p><p className="text-[10px] text-muted-foreground">Vinculadas a fluxos</p></div>
             </CardContent>
           </Card>
           <Card className="border border-border shadow-none">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center"><Puzzle className="w-5 h-5 text-purple-500" /></div>
-              <div>
-                <p className="text-lg font-bold text-foreground">0</p>
-                <p className="text-[10px] text-muted-foreground">Integrações</p>
-              </div>
+              <div><p className="text-lg font-bold text-foreground">0</p><p className="text-[10px] text-muted-foreground">Integrações</p></div>
             </CardContent>
           </Card>
         </div>
@@ -175,10 +181,10 @@ export default function Automation() {
                               <span className="text-xs text-muted-foreground">Gatilho: <strong>{rule.trigger}</strong></span>
                               <ArrowRight className="w-3 h-3 text-muted-foreground" />
                               <span className="text-xs text-muted-foreground">Ação: <strong>{ACTION_TYPES.find(a => a.value === rule.action)?.label}</strong></span>
-                              {rule.flowName && (
+                              {rule.flow_name && (
                                 <>
                                   <ArrowRight className="w-3 h-3 text-primary" />
-                                  <Badge variant="secondary" className="text-[10px] gap-1"><GitBranch className="w-2.5 h-2.5" /> {rule.flowName}</Badge>
+                                  <Badge variant="secondary" className="text-[10px] gap-1"><GitBranch className="w-2.5 h-2.5" /> {rule.flow_name}</Badge>
                                 </>
                               )}
                               {rule.delay && <Badge variant="outline" className="text-[10px]">⏱ {rule.delay}</Badge>}
@@ -224,21 +230,11 @@ export default function Automation() {
           </TabsContent>
 
           <TabsContent value="schedules" className="mt-4">
-            <Card className="border border-border shadow-none">
-              <CardContent className="p-10 text-center text-muted-foreground text-sm">
-                Nenhum agendamento configurado. Crie regras com gatilho "Agendamento" para começar.
-              </CardContent>
-            </Card>
+            <Card className="border border-border shadow-none"><CardContent className="p-10 text-center text-muted-foreground text-sm">Nenhum agendamento configurado.</CardContent></Card>
           </TabsContent>
-
           <TabsContent value="campaigns" className="mt-4">
-            <Card className="border border-border shadow-none">
-              <CardContent className="p-10 text-center text-muted-foreground text-sm">
-                Nenhuma campanha criada. Use a aba Transmissão para criar campanhas de remarketing.
-              </CardContent>
-            </Card>
+            <Card className="border border-border shadow-none"><CardContent className="p-10 text-center text-muted-foreground text-sm">Nenhuma campanha criada.</CardContent></Card>
           </TabsContent>
-
           <TabsContent value="integrations" className="mt-4">
             <Card className="border border-border shadow-none">
               <CardContent className="p-6">
@@ -252,10 +248,7 @@ export default function Automation() {
                     <div key={integ.name} className="flex items-center justify-between bg-muted/30 rounded-lg p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><Puzzle className="w-5 h-5 text-primary" /></div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{integ.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{integ.desc}</p>
-                        </div>
+                        <div><p className="text-sm font-medium text-foreground">{integ.name}</p><p className="text-[10px] text-muted-foreground">{integ.desc}</p></div>
                       </div>
                       <Button size="sm" className="text-xs bg-primary text-primary-foreground">Conectar</Button>
                     </div>
@@ -309,7 +302,7 @@ export default function Automation() {
                 </Select>
               </div>
             )}
-            {(newRule.action === "send_message") && (
+            {newRule.action === "send_message" && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Mensagem</label>
                 <Textarea value={newRule.message} onChange={e => setNewRule(p => ({ ...p, message: e.target.value }))} placeholder="Olá {nome}! ..." className="mt-1" />
@@ -358,10 +351,7 @@ export default function Automation() {
               <button key={f} onClick={() => { setShowFlowCreate(false); toast.success(`Fluxo "${f}" criado!`); }}
                 className="w-full flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left">
                 <GitBranch className="w-5 h-5 text-primary" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">{f}</p>
-                  <p className="text-[10px] text-muted-foreground">Modelo pronto para usar</p>
-                </div>
+                <div><p className="text-sm font-medium text-foreground">{f}</p><p className="text-[10px] text-muted-foreground">Modelo pronto para usar</p></div>
               </button>
             ))}
           </div>
