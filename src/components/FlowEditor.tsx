@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Play, MessageSquare, Grid3X3, Shuffle, Tag, HeadphonesIcon, Building2,
   Save, RotateCcw, GitBranch, Clock, X, Plus, Trash2,
@@ -70,13 +71,38 @@ interface FlowEditorProps {
   flowName: string;
   onBack: () => void;
   allFlows?: string[];
+  flowId?: string;
 }
 
-export default function FlowEditor({ flowName, onBack, allFlows = [] }: FlowEditorProps) {
+export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: FlowEditorProps) {
   const [nodes, setNodes] = useState<FlowNode[]>([
     { id: "1", type: "inicio", label: "Início", x: 80, y: 200, color: "bg-red-500", data: { message: "" } },
   ]);
   const [connections, setConnections] = useState<FlowConnection[]>([]);
+
+  // Load saved nodes/connections from DB
+  useEffect(() => {
+    if (!flowId) return;
+    const load = async () => {
+      const { data } = await (supabase as any).from("flows").select("nodes, connections").eq("id", flowId).single();
+      if (data) {
+        if (data.nodes && Array.isArray(data.nodes) && data.nodes.length > 0) setNodes(data.nodes);
+        if (data.connections && Array.isArray(data.connections)) setConnections(data.connections);
+      }
+    };
+    load();
+  }, [flowId]);
+
+  // Auto-save nodes/connections to DB
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!flowId) return;
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    saveTimeout.current = setTimeout(async () => {
+      await (supabase as any).from("flows").update({ nodes, connections }).eq("id", flowId);
+    }, 1500);
+    return () => { if (saveTimeout.current) clearTimeout(saveTimeout.current); };
+  }, [nodes, connections, flowId]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
