@@ -14,7 +14,212 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_bots: {
+        Row: {
+          assigned_flow: string | null
+          auto_transfer: boolean | null
+          conversations: number
+          created_at: string
+          id: string
+          keywords: string[] | null
+          max_simultaneous: number | null
+          name: string
+          response_delay: number | null
+          status: string
+          training: string | null
+          transfer_after: number | null
+          updated_at: string
+          welcome_message: string | null
+        }
+        Insert: {
+          assigned_flow?: string | null
+          auto_transfer?: boolean | null
+          conversations?: number
+          created_at?: string
+          id?: string
+          keywords?: string[] | null
+          max_simultaneous?: number | null
+          name: string
+          response_delay?: number | null
+          status?: string
+          training?: string | null
+          transfer_after?: number | null
+          updated_at?: string
+          welcome_message?: string | null
+        }
+        Update: {
+          assigned_flow?: string | null
+          auto_transfer?: boolean | null
+          conversations?: number
+          created_at?: string
+          id?: string
+          keywords?: string[] | null
+          max_simultaneous?: number | null
+          name?: string
+          response_delay?: number | null
+          status?: string
+          training?: string | null
+          transfer_after?: number | null
+          updated_at?: string
+          welcome_message?: string | null
+        }
+        Relationships: []
+      }
+      automation_rules: {
+        Row: {
+          action: string
+          created_at: string
+          delay: string | null
+          flow_name: string | null
+          id: string
+          message: string | null
+          name: string
+          status: string
+          trigger: string
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          action?: string
+          created_at?: string
+          delay?: string | null
+          flow_name?: string | null
+          id?: string
+          message?: string | null
+          name: string
+          status?: string
+          trigger?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          delay?: string | null
+          flow_name?: string | null
+          id?: string
+          message?: string | null
+          name?: string
+          status?: string
+          trigger?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      flow_folders: {
+        Row: {
+          created_at: string
+          id: string
+          is_open: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      flows: {
+        Row: {
+          connections: Json
+          created_at: string
+          folder_id: string | null
+          id: string
+          name: string
+          nodes: Json
+          shortcut: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          connections?: Json
+          created_at?: string
+          folder_id?: string | null
+          id?: string
+          name: string
+          nodes?: Json
+          shortcut?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          connections?: Json
+          created_at?: string
+          folder_id?: string | null
+          id?: string
+          name?: string
+          nodes?: Json
+          shortcut?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flows_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "flow_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_connections: {
+        Row: {
+          closed_flow: string | null
+          created_at: string
+          default_flow: string | null
+          id: string
+          inactivity_time: string | null
+          last_seen: string | null
+          name: string
+          phone: string
+          status: string
+          updated_at: string
+          welcome_flow: string | null
+        }
+        Insert: {
+          closed_flow?: string | null
+          created_at?: string
+          default_flow?: string | null
+          id?: string
+          inactivity_time?: string | null
+          last_seen?: string | null
+          name: string
+          phone: string
+          status?: string
+          updated_at?: string
+          welcome_flow?: string | null
+        }
+        Update: {
+          closed_flow?: string | null
+          created_at?: string
+          default_flow?: string | null
+          id?: string
+          inactivity_time?: string | null
+          last_seen?: string | null
+          name?: string
+          phone?: string
+          status?: string
+          updated_at?: string
+          welcome_flow?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
