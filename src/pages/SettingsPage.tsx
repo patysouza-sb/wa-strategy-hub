@@ -11,33 +11,33 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useSupabaseTable } from "@/hooks/useSupabaseData";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 
-interface DbConnection {
+interface DbInstance {
   id: string;
-  name: string;
-  phone: string;
+  tenant_id: string;
+  display_name: string;
+  phone_number: string | null;
   status: string;
-  welcome_flow: string | null;
-  default_flow: string | null;
-  inactivity_time: string | null;
-  closed_flow: string | null;
-  last_seen: string | null;
+  is_default: boolean;
+  welcome_flow_id: string | null;
+  default_response_flow_id: string | null;
+  closed_flow_id: string | null;
+  default_response_delay_hours: number;
+  qr_code: string | null;
+  connected_at: string | null;
   created_at: string;
-  updated_at: string;
 }
 
-// Flows loaded from database below
-
 export default function SettingsPage() {
-  const { data: connections, loading, insert, update, remove } = useSupabaseTable<DbConnection>("whatsapp_connections");
-  const { data: dbFlows } = useSupabaseTable<{ id: string; name: string }>("flows", "name");
-  const FLOWS = dbFlows.map(f => f.name);
+  const { data: instances, loading, insert, update, remove } = useSupabaseTable<DbInstance>("whatsapp_instances");
+  const { data: dbFlows } = useSupabaseTable<{ id: string; name: string }>("automation_flows", "name");
   const [showAddConnection, setShowAddConnection] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [qrExpired, setQrExpired] = useState(false);
   const [qrTimer, setQrTimer] = useState(60);
-  const [newConn, setNewConn] = useState({ name: "", phone: "", welcomeFlow: "Boas-vindas Padrão", defaultFlow: "Resposta Geral", inactivityTime: "24h", closedFlow: "Pesquisa de Satisfação" });
-  const [editingConn, setEditingConn] = useState<DbConnection | null>(null);
+  const [newConn, setNewConn] = useState({ name: "", phone: "", welcomeFlowId: "", defaultFlowId: "", closedFlowId: "" });
+  const [editingConn, setEditingConn] = useState<DbInstance | null>(null);
 
   useEffect(() => {
     if (!showQRCode || qrExpired) return;
@@ -64,26 +64,27 @@ export default function SettingsPage() {
   };
 
   const confirmQRConnection = async () => {
-    const inserted = await insert({
-      name: newConn.name,
-      phone: newConn.phone,
+    await insert({
+      tenant_id: DEFAULT_TENANT_ID,
+      display_name: newConn.name,
+      phone_number: newConn.phone,
       status: "connected",
-      welcome_flow: newConn.welcomeFlow,
-      default_flow: newConn.defaultFlow,
-      inactivity_time: newConn.inactivityTime,
-      closed_flow: newConn.closedFlow,
-      last_seen: new Date().toISOString(),
+      is_default: instances.length === 0,
+      welcome_flow_id: newConn.welcomeFlowId || null,
+      default_response_flow_id: newConn.defaultFlowId || null,
+      closed_flow_id: newConn.closedFlowId || null,
+      connected_at: new Date().toISOString(),
     } as any);
-    setNewConn({ name: "", phone: "", welcomeFlow: "Boas-vindas Padrão", defaultFlow: "Resposta Geral", inactivityTime: "24h", closedFlow: "Pesquisa de Satisfação" });
+    setNewConn({ name: "", phone: "", welcomeFlowId: "", defaultFlowId: "", closedFlowId: "" });
     setShowQRCode(false);
     toast.success("WhatsApp conectado com sucesso!");
   };
 
   const toggleConnection = async (id: string) => {
-    const conn = connections.find(c => c.id === id);
+    const conn = instances.find(c => c.id === id);
     if (!conn) return;
     const newStatus = conn.status === "connected" ? "disconnected" : "connected";
-    await update(id, { status: newStatus, last_seen: new Date().toISOString() } as any);
+    await update(id, { status: newStatus, connected_at: newStatus === "connected" ? new Date().toISOString() : conn.connected_at } as any);
   };
 
   const removeConnection = async (id: string) => {
@@ -92,7 +93,7 @@ export default function SettingsPage() {
   };
 
   const updateConnField = async (id: string, field: string, value: string) => {
-    await update(id, { [field]: value } as any);
+    await update(id, { [field]: value || null } as any);
     if (editingConn && editingConn.id === id) {
       setEditingConn({ ...editingConn, [field]: value });
     }
@@ -126,7 +127,7 @@ export default function SettingsPage() {
               </Button>
             </div>
 
-            {connections.length === 0 ? (
+            {instances.length === 0 ? (
               <Card className="border border-border shadow-none">
                 <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                   <Phone className="w-12 h-12 text-muted-foreground/20 mb-4" />
@@ -136,7 +137,7 @@ export default function SettingsPage() {
               </Card>
             ) : (
               <div className="space-y-3">
-                {connections.map(conn => (
+                {instances.map(conn => (
                   <Card key={conn.id} className="border border-border shadow-none">
                     <CardContent className="p-5">
                       <div className="flex items-center justify-between">
@@ -148,12 +149,12 @@ export default function SettingsPage() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <h3 className="text-sm font-semibold text-foreground">{conn.name}</h3>
+                              <h3 className="text-sm font-semibold text-foreground">{conn.display_name}</h3>
                               <Badge className={`text-[10px] border-0 ${conn.status === "connected" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
                                 {conn.status === "connected" ? "Conectado" : "Desconectado"}
                               </Badge>
                             </div>
-                            <p className="text-xs text-muted-foreground">{conn.phone}</p>
+                            <p className="text-xs text-muted-foreground">{conn.phone_number}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -229,16 +230,16 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Fluxo de Boas-vindas</label>
-                <Select value={newConn.welcomeFlow} onValueChange={v => setNewConn(p => ({ ...p, welcomeFlow: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>{FLOWS.map(f => (<SelectItem key={f} value={f}>{f}</SelectItem>))}</SelectContent>
+                <Select value={newConn.welcomeFlowId} onValueChange={v => setNewConn(p => ({ ...p, welcomeFlowId: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{dbFlows.map(f => (<SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Fluxo Padrão</label>
-                <Select value={newConn.defaultFlow} onValueChange={v => setNewConn(p => ({ ...p, defaultFlow: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>{FLOWS.map(f => (<SelectItem key={f} value={f}>{f}</SelectItem>))}</SelectContent>
+                <Select value={newConn.defaultFlowId} onValueChange={v => setNewConn(p => ({ ...p, defaultFlowId: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{dbFlows.map(f => (<SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
             </div>
@@ -295,36 +296,28 @@ export default function SettingsPage() {
 
       <Dialog open={!!editingConn} onOpenChange={() => setEditingConn(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Configurar {editingConn?.name}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Configurar {editingConn?.display_name}</DialogTitle></DialogHeader>
           {editingConn && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Fluxo de Boas-vindas</label>
-                  <Select value={editingConn.welcome_flow || ""} onValueChange={v => updateConnField(editingConn.id, "welcome_flow", v)}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>{FLOWS.map(f => (<SelectItem key={f} value={f}>{f}</SelectItem>))}</SelectContent>
+                  <Select value={editingConn.welcome_flow_id || ""} onValueChange={v => updateConnField(editingConn.id, "welcome_flow_id", v)}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>{dbFlows.map(f => (<SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Fluxo Padrão</label>
-                  <Select value={editingConn.default_flow || ""} onValueChange={v => updateConnField(editingConn.id, "default_flow", v)}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>{FLOWS.map(f => (<SelectItem key={f} value={f}>{f}</SelectItem>))}</SelectContent>
+                  <Select value={editingConn.default_response_flow_id || ""} onValueChange={v => updateConnField(editingConn.id, "default_response_flow_id", v)}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>{dbFlows.map(f => (<SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Tempo de Inatividade</label>
-                <Select value={editingConn.inactivity_time || "24h"} onValueChange={v => updateConnField(editingConn.id, "inactivity_time", v)}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="6h">6 horas</SelectItem>
-                    <SelectItem value="12h">12 horas</SelectItem>
-                    <SelectItem value="24h">24 horas</SelectItem>
-                    <SelectItem value="48h">48 horas</SelectItem>
-                  </SelectContent>
-                </Select>
+                <label className="text-xs font-medium text-muted-foreground">Delay de Resposta Padrão (horas)</label>
+                <Input type="number" value={editingConn.default_response_delay_hours} onChange={e => updateConnField(editingConn.id, "default_response_delay_hours", e.target.value)} className="mt-1" />
               </div>
             </div>
           )}

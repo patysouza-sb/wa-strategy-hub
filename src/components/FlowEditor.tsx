@@ -32,18 +32,18 @@ interface FlowConnection {
 }
 
 const BLOCK_TYPES = [
-  { type: "inicio", label: "Início", icon: Play, color: "bg-red-500", category: "flow" },
-  { type: "conteudo", label: "Conteúdo", icon: MessageSquare, color: "bg-orange-500", category: "content" },
+  { type: "start", label: "Início", icon: Play, color: "bg-red-500", category: "flow" },
+  { type: "content", label: "Conteúdo", icon: MessageSquare, color: "bg-orange-500", category: "content" },
   { type: "menu", label: "Menu", icon: Grid3X3, color: "bg-purple-500", category: "flow" },
-  { type: "randomizador", label: "Randomizador", icon: Shuffle, color: "bg-blue-500", category: "flow" },
-  { type: "etiqueta", label: "Etiqueta", icon: Tag, color: "bg-pink-500", category: "data" },
-  { type: "controlador", label: "Controlador de Chat", icon: HeadphonesIcon, color: "bg-teal-500", category: "flow" },
-  { type: "departamentos", label: "Departamentos", icon: Building2, color: "bg-indigo-500", category: "flow" },
-  { type: "salvar", label: "Salvar", icon: Save, color: "bg-emerald-500", category: "logic" },
+  { type: "randomizer", label: "Randomizador", icon: Shuffle, color: "bg-blue-500", category: "flow" },
+  { type: "tag", label: "Etiqueta", icon: Tag, color: "bg-pink-500", category: "data" },
+  { type: "chat_controller", label: "Controlador de Chat", icon: HeadphonesIcon, color: "bg-teal-500", category: "flow" },
+  { type: "department", label: "Departamentos", icon: Building2, color: "bg-indigo-500", category: "flow" },
+  { type: "save", label: "Salvar", icon: Save, color: "bg-emerald-500", category: "logic" },
   { type: "remarketing", label: "Remarketing", icon: RotateCcw, color: "bg-yellow-500", category: "logic" },
-  { type: "condicao", label: "Condição", icon: GitBranch, color: "bg-cyan-500", category: "logic" },
-  { type: "conexao", label: "Conexão de Fluxo", icon: GitBranch, color: "bg-violet-500", category: "flow" },
-  { type: "atraso", label: "Atraso / Delay", icon: Clock, color: "bg-amber-500", category: "flow" },
+  { type: "condition", label: "Condição", icon: GitBranch, color: "bg-cyan-500", category: "logic" },
+  { type: "flow_connection", label: "Conexão de Fluxo", icon: GitBranch, color: "bg-violet-500", category: "flow" },
+  { type: "smart_delay", label: "Atraso / Delay", icon: Clock, color: "bg-amber-500", category: "flow" },
 ];
 
 const DELAY_OPTIONS = [
@@ -76,33 +76,108 @@ interface FlowEditorProps {
 
 export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: FlowEditorProps) {
   const [nodes, setNodes] = useState<FlowNode[]>([
-    { id: "1", type: "inicio", label: "Início", x: 80, y: 200, color: "bg-red-500", data: { message: "" } },
+    { id: "default-start", type: "start", label: "Início", x: 80, y: 200, color: "bg-red-500", data: { message: "" } },
   ]);
   const [connections, setConnections] = useState<FlowConnection[]>([]);
 
-  // Load saved nodes/connections from DB
+  // Load nodes and connections from DB tables
   useEffect(() => {
     if (!flowId) return;
     const load = async () => {
-      const { data } = await (supabase as any).from("flows").select("nodes, connections").eq("id", flowId).single();
-      if (data) {
-        if (data.nodes && Array.isArray(data.nodes) && data.nodes.length > 0) setNodes(data.nodes);
-        if (data.connections && Array.isArray(data.connections)) setConnections(data.connections);
+      // Load flow_nodes
+      const { data: dbNodes } = await (supabase as any)
+        .from("flow_nodes")
+        .select("*")
+        .eq("flow_id", flowId);
+
+      if (dbNodes && dbNodes.length > 0) {
+        const mapped: FlowNode[] = dbNodes.map((n: any) => ({
+          id: n.id,
+          type: n.type,
+          label: n.config?.label || BLOCK_TYPES.find(b => b.type === n.type)?.label || n.type,
+          x: n.pos_x,
+          y: n.pos_y,
+          color: n.config?.color || "bg-gray-500",
+          data: n.config?.data || {},
+        }));
+        setNodes(mapped);
+      }
+
+      // Load flow_connections
+      const { data: dbConns } = await (supabase as any)
+        .from("flow_connections")
+        .select("*");
+
+      if (dbConns) {
+        // Filter connections belonging to this flow's nodes
+        const nodeIds = new Set((dbNodes || []).map((n: any) => n.id));
+        const mapped: FlowConnection[] = dbConns
+          .filter((c: any) => nodeIds.has(c.from_node_id))
+          .map((c: any) => ({
+            id: c.id,
+            from: c.from_node_id,
+            to: c.to_node_id,
+            label: c.condition_label || "",
+          }));
+        setConnections(mapped);
       }
     };
     load();
   }, [flowId]);
 
-  // Auto-save nodes/connections to DB
+  // Auto-save to DB
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!flowId) return;
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(async () => {
-      await (supabase as any).from("flows").update({ nodes, connections }).eq("id", flowId);
-    }, 1500);
+      // Delete existing nodes and connections, re-insert
+      // First get existing node IDs to delete their connections
+      const { data: existingNodes } = await (supabase as any)
+        .from("flow_nodes")
+        .select("id")
+        .eq("flow_id", flowId);
+
+      if (existingNodes && existingNodes.length > 0) {
+        const nodeIds = existingNodes.map((n: any) => n.id);
+        await (supabase as any)
+          .from("flow_connections")
+          .delete()
+          .in("from_node_id", nodeIds);
+      }
+
+      await (supabase as any)
+        .from("flow_nodes")
+        .delete()
+        .eq("flow_id", flowId);
+
+      // Insert current nodes
+      if (nodes.length > 0) {
+        const dbNodes = nodes.map(n => ({
+          id: n.id,
+          flow_id: flowId,
+          type: n.type,
+          pos_x: Math.round(n.x),
+          pos_y: Math.round(n.y),
+          config: { label: n.label, color: n.color, data: n.data || {} },
+        }));
+        await (supabase as any).from("flow_nodes").insert(dbNodes);
+      }
+
+      // Insert current connections
+      if (connections.length > 0) {
+        const dbConns = connections.map(c => ({
+          id: c.id,
+          from_node_id: c.from,
+          to_node_id: c.to,
+          condition_label: c.label || null,
+        }));
+        await (supabase as any).from("flow_connections").insert(dbConns);
+      }
+    }, 2000);
     return () => { if (saveTimeout.current) clearTimeout(saveTimeout.current); };
   }, [nodes, connections, flowId]);
+
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -117,31 +192,31 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
     if (!bt) return;
     const defaultData: Record<string, any> = { message: "" };
 
-    if (type === "conteudo") {
+    if (type === "content") {
       defaultData.contentType = "text";
       defaultData.fileName = "";
     }
-    if (type === "salvar") {
+    if (type === "save") {
       defaultData.waitForResponse = true;
       defaultData.timeout = "15m";
       defaultData.maxRetries = "3";
     }
-    if (type === "conexao") {
+    if (type === "flow_connection") {
       defaultData.targetFlow = "";
     }
-    if (type === "atraso") {
+    if (type === "smart_delay") {
       defaultData.delay = "5s";
     }
     if (type === "remarketing") {
       defaultData.delay = "15m";
       defaultData.message = "";
     }
-    if (type === "condicao") {
+    if (type === "condition") {
       defaultData.conditions = [];
     }
 
     const newNode: FlowNode = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       type,
       label: bt.label,
       x: 300 + Math.random() * 200,
@@ -163,7 +238,7 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
     if (connecting) {
       if (connecting.nodeId !== nodeId) {
         setConnections(prev => [...prev, {
-          id: `c-${Date.now()}`,
+          id: crypto.randomUUID(),
           from: connecting.nodeId,
           to: nodeId,
           fromPort: connecting.port,
@@ -221,7 +296,7 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
     const node = nodes.find(n => n.id === id);
     if (!node) return { x: 0, y: 0 };
     const baseX = node.x + 200;
-    if (node.type === "salvar" && port) {
+    if (node.type === "save" && port) {
       if (port === "responded") return { x: baseX, y: node.y + 30 };
       if (port === "timeout") return { x: baseX, y: node.y + 55 };
       if (port === "exhausted") return { x: baseX, y: node.y + 80 };
@@ -377,7 +452,7 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
 
                     {/* Body */}
                     <div className="px-3 py-2 space-y-1">
-                      {node.type === "conteudo" && (
+                      {node.type === "content" && (
                         <div className="flex items-center gap-1.5">
                           <Badge variant="secondary" className="text-[9px]">
                             {CONTENT_TYPES.find(c => c.value === node.data?.contentType)?.label || "Texto"}
@@ -387,7 +462,7 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
                           )}
                         </div>
                       )}
-                      {node.type === "salvar" && (
+                      {node.type === "save" && (
                         <div className="space-y-1">
                           <div className="flex items-center gap-1 text-[9px]">
                             <CheckCircle2 className="w-3 h-3 text-emerald-500" />
@@ -413,52 +488,48 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
                           </div>
                           <div className="flex items-center gap-1 text-[9px]">
                             <XCircle className="w-3 h-3 text-red-500" />
-                            <span className="text-muted-foreground">Esgotou tentativas</span>
+                            <span className="text-muted-foreground">Esgotado</span>
                             <button
                               className="ml-auto w-4 h-4 rounded-full bg-red-100 border border-red-300 flex items-center justify-center hover:bg-red-200"
                               onClick={e => { e.stopPropagation(); startConnection(node.id, "exhausted"); }}
-                              title="Conectar: Esgotou"
+                              title="Conectar: Esgotado"
                             >
                               <Plus className="w-2.5 h-2.5 text-red-600" />
                             </button>
                           </div>
                         </div>
                       )}
-                      {node.type === "conexao" && (
-                        <div className="text-[9px] text-muted-foreground">
-                          → {node.data?.targetFlow || "Selecione um fluxo"}
-                        </div>
-                      )}
-                      {node.type === "atraso" && (
-                        <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          {DELAY_OPTIONS.find(d => d.value === node.data?.delay)?.label || "5 segundos"}
-                        </div>
-                      )}
                       {node.type === "remarketing" && (
-                        <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
-                          <RotateCcw className="w-3 h-3" />
-                          Reengajar após {DELAY_OPTIONS.find(d => d.value === node.data?.delay)?.label || "15m"}
+                        <div className="text-[9px] text-muted-foreground">
+                          Delay: {node.data?.delay || "15m"}
                         </div>
                       )}
-                      {!["conteudo", "salvar", "conexao", "atraso", "remarketing"].includes(node.type) && (
-                        <p className="text-[9px] text-muted-foreground truncate">
-                          {node.data?.message || "Clique para configurar"}
-                        </p>
+                      {node.type === "smart_delay" && (
+                        <div className="text-[9px] text-muted-foreground">
+                          ⏱ {DELAY_OPTIONS.find(d => d.value === node.data?.delay)?.label || node.data?.delay || "5s"}
+                        </div>
                       )}
+                      {node.type === "flow_connection" && (
+                        <div className="text-[9px] text-muted-foreground">
+                          → {node.data?.targetFlow || "Selecione"}
+                        </div>
+                      )}
+                      <p className="text-[9px] text-muted-foreground truncate">
+                        {node.data?.message || "Clique para configurar"}
+                      </p>
                     </div>
 
-                    {/* Connection output (except salvar which has custom ports) */}
-                    {node.type !== "salvar" && (
-                      <div className="flex justify-end px-2 pb-2">
+                    {/* Connection point */}
+                    {node.type !== "save" && (
+                      <div className="flex justify-center pb-2">
                         <button
                           className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                            connecting ? "bg-blue-50 border-blue-400 hover:bg-blue-100" : "bg-muted border-border hover:border-primary"
+                            isConnectingThis ? "bg-primary border-primary" : "bg-background border-border hover:border-primary"
                           }`}
                           onClick={e => { e.stopPropagation(); startConnection(node.id); }}
                           title="Conectar"
                         >
-                          <Plus className="w-3 h-3" />
+                          <Plus className="w-2.5 h-2.5" />
                         </button>
                       </div>
                     )}
@@ -469,314 +540,126 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
           </div>
 
           {connecting && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-4 py-2 rounded-full shadow-lg z-50 font-medium">
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-4 py-2 rounded-full shadow-lg z-20 animate-pulse">
               Clique em outro bloco para conectar
-              <button className="ml-2 underline" onClick={() => setConnecting(null)}>Cancelar</button>
             </div>
           )}
         </div>
 
         {/* Properties panel */}
         {selectedNodeData && (
-          <div className="w-80 border-l border-border bg-card overflow-y-auto p-4 space-y-4">
+          <div className="w-72 border-l border-border bg-card overflow-y-auto p-4 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground">Propriedades</h3>
-              <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => setSelectedNode(null)}>
-                <X className="w-4 h-4" />
+              <h3 className="text-sm font-semibold text-foreground">Propriedades</h3>
+              <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => setSelectedNode(null)}>
+                <X className="w-3.5 h-3.5" />
               </Button>
             </div>
+            <div>
+              <label className="text-[10px] font-medium text-muted-foreground">Rótulo</label>
+              <Input
+                value={selectedNodeData.label}
+                onChange={e => setNodes(prev => prev.map(n => n.id === selectedNode ? { ...n, label: e.target.value } : n))}
+                className="mt-1 h-8 text-xs"
+              />
+            </div>
 
-            <div className="space-y-3">
-              {/* Common: Label */}
-              <div>
-                <label className="text-[10px] font-semibold text-muted-foreground uppercase">Nome do bloco</label>
-                <Input
-                  value={selectedNodeData.label}
-                  onChange={e => setNodes(prev => prev.map(n => n.id === selectedNode ? { ...n, label: e.target.value } : n))}
-                  className="mt-1 h-8 text-xs"
-                />
-              </div>
-
-              {/* Content block properties */}
-              {selectedNodeData.type === "conteudo" && (
-                <>
-                  <div>
-                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Tipo de conteúdo</label>
-                    <div className="grid grid-cols-3 gap-1.5 mt-1.5">
-                      {CONTENT_TYPES.map(ct => {
-                        const CtIcon = ct.icon;
-                        const isActive = selectedNodeData.data?.contentType === ct.value;
-                        return (
-                          <button
-                            key={ct.value}
-                            onClick={() => setNodes(prev => prev.map(n =>
-                              n.id === selectedNode ? { ...n, data: { ...n.data, contentType: ct.value } } : n
-                            ))}
-                            className={`flex flex-col items-center gap-1 p-2 rounded-lg border text-[9px] transition-colors ${
-                              isActive ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/50"
-                            }`}
-                          >
-                            <CtIcon className="w-3.5 h-3.5" />
-                            {ct.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Mensagem</label>
-                    <Textarea
-                      value={selectedNodeData.data?.message || ""}
-                      onChange={e => setNodes(prev => prev.map(n =>
-                        n.id === selectedNode ? { ...n, data: { ...n.data, message: e.target.value } } : n
-                      ))}
-                      className="mt-1 text-xs min-h-[80px]"
-                      placeholder="Digite a mensagem do conteúdo..."
-                    />
-                  </div>
-                  {selectedNodeData.data?.contentType !== "text" && (
-                    <div>
-                      <label className="text-[10px] font-semibold text-muted-foreground uppercase">Arquivo</label>
-                      <div className="mt-1 border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                        <Upload className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
-                        <p className="text-[10px] text-muted-foreground">Clique para enviar arquivo</p>
-                        <p className="text-[8px] text-muted-foreground mt-0.5">
-                          {selectedNodeData.data?.contentType === "audio" && "MP3, OGG, WAV"}
-                          {selectedNodeData.data?.contentType === "video" && "MP4, MOV"}
-                          {selectedNodeData.data?.contentType === "image" && "JPG, PNG, WEBP"}
-                          {selectedNodeData.data?.contentType === "pdf" && "PDF"}
-                          {selectedNodeData.data?.contentType === "proof" && "Imagem ou vídeo"}
-                        </p>
-                      </div>
-                      {selectedNodeData.data?.fileName && (
-                        <p className="text-[10px] text-foreground mt-1">📎 {selectedNodeData.data.fileName}</p>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Save block properties */}
-              {selectedNodeData.type === "salvar" && (
-                <>
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 space-y-2">
-                    <p className="text-[10px] font-bold text-emerald-800 uppercase">Lógica de Espera</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-emerald-700">Esperar resposta</span>
-                      <Switch
-                        checked={selectedNodeData.data?.waitForResponse ?? true}
-                        onCheckedChange={v => setNodes(prev => prev.map(n =>
-                          n.id === selectedNode ? { ...n, data: { ...n.data, waitForResponse: v } } : n
-                        ))}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Caso não responda após</label>
-                    <Select
-                      value={selectedNodeData.data?.timeout || "15m"}
-                      onValueChange={v => setNodes(prev => prev.map(n =>
-                        n.id === selectedNode ? { ...n, data: { ...n.data, timeout: v } } : n
-                      ))}
-                    >
-                      <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {DELAY_OPTIONS.map(d => (
-                          <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Máx. tentativas</label>
-                    <Select
-                      value={selectedNodeData.data?.maxRetries || "3"}
-                      onValueChange={v => setNodes(prev => prev.map(n =>
-                        n.id === selectedNode ? { ...n, data: { ...n.data, maxRetries: v } } : n
-                      ))}
-                    >
-                      <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">1 tentativa</SelectItem>
-                        <SelectItem value="2">2 tentativas</SelectItem>
-                        <SelectItem value="3">3 tentativas</SelectItem>
-                        <SelectItem value="5">5 tentativas</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase">Saídas do bloco</p>
-                    <div className="flex items-center gap-2 text-xs p-2 bg-emerald-50 rounded-lg">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                      <span className="text-emerald-700">Respondeu → Próximo bloco</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs p-2 bg-amber-50 rounded-lg">
-                      <Timer className="w-3.5 h-3.5 text-amber-500" />
-                      <span className="text-amber-700">Timeout → Remarketing</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs p-2 bg-red-50 rounded-lg">
-                      <XCircle className="w-3.5 h-3.5 text-red-500" />
-                      <span className="text-red-700">Esgotou → Finalizar</span>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Flow Connection block */}
-              {selectedNodeData.type === "conexao" && (
+            {selectedNodeData.type === "content" && (
+              <>
                 <div>
-                  <label className="text-[10px] font-semibold text-muted-foreground uppercase">Ir para o fluxo</label>
+                  <label className="text-[10px] font-medium text-muted-foreground">Tipo de Conteúdo</label>
                   <Select
-                    value={selectedNodeData.data?.targetFlow || ""}
-                    onValueChange={v => setNodes(prev => prev.map(n =>
-                      n.id === selectedNode ? { ...n, data: { ...n.data, targetFlow: v } } : n
-                    ))}
-                  >
-                    <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue placeholder="Selecione um fluxo" /></SelectTrigger>
-                    <SelectContent>
-                      {allFlows.filter(f => f !== flowName).map(f => (
-                        <SelectItem key={f} value={f}>{f}</SelectItem>
-                      ))}
-                      {allFlows.filter(f => f !== flowName).length === 0 && (
-                        <SelectItem value="none" disabled>Nenhum fluxo disponível</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[9px] text-muted-foreground mt-1.5">
-                    Conecte este bloco a outro fluxo para dividir seu funil em etapas
-                  </p>
-                </div>
-              )}
-
-              {/* Delay block */}
-              {selectedNodeData.type === "atraso" && (
-                <div>
-                  <label className="text-[10px] font-semibold text-muted-foreground uppercase">Tempo de espera</label>
-                  <Select
-                    value={selectedNodeData.data?.delay || "5s"}
-                    onValueChange={v => setNodes(prev => prev.map(n =>
-                      n.id === selectedNode ? { ...n, data: { ...n.data, delay: v } } : n
-                    ))}
+                    value={selectedNodeData.data?.contentType || "text"}
+                    onValueChange={v => setNodes(prev => prev.map(n => n.id === selectedNode ? { ...n, data: { ...n.data, contentType: v } } : n))}
                   >
                     <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {DELAY_OPTIONS.map(d => (
-                        <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
-                      ))}
+                      {CONTENT_TYPES.map(ct => (<SelectItem key={ct.value} value={ct.value}>{ct.label}</SelectItem>))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+                {(selectedNodeData.data?.contentType === "audio" || selectedNodeData.data?.contentType === "video" || selectedNodeData.data?.contentType === "image" || selectedNodeData.data?.contentType === "pdf") && (
+                  <div className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50">
+                    <Upload className="w-6 h-6 mx-auto text-muted-foreground mb-1" />
+                    <p className="text-[10px] text-muted-foreground">Arraste ou clique para enviar</p>
+                  </div>
+                )}
+              </>
+            )}
 
-              {/* Remarketing block */}
-              {selectedNodeData.type === "remarketing" && (
-                <>
-                  <div>
-                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Reengajar após</label>
-                    <Select
-                      value={selectedNodeData.data?.delay || "15m"}
-                      onValueChange={v => setNodes(prev => prev.map(n =>
-                        n.id === selectedNode ? { ...n, data: { ...n.data, delay: v } } : n
-                      ))}
-                    >
-                      <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {DELAY_OPTIONS.map(d => (
-                          <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Mensagem de remarketing</label>
-                    <Textarea
-                      value={selectedNodeData.data?.message || ""}
-                      onChange={e => setNodes(prev => prev.map(n =>
-                        n.id === selectedNode ? { ...n, data: { ...n.data, message: e.target.value } } : n
-                      ))}
-                      className="mt-1 text-xs min-h-[60px]"
-                      placeholder="Ex: Oi! Ainda tem interesse?"
-                    />
-                  </div>
-                </>
-              )}
+            <div>
+              <label className="text-[10px] font-medium text-muted-foreground">Mensagem / Texto</label>
+              <Textarea
+                value={selectedNodeData.data?.message || ""}
+                onChange={e => setNodes(prev => prev.map(n => n.id === selectedNode ? { ...n, data: { ...n.data, message: e.target.value } } : n))}
+                className="mt-1 text-xs min-h-[80px]"
+                placeholder="Digite a mensagem..."
+              />
+            </div>
 
-              {/* Condition block */}
-              {selectedNodeData.type === "condicao" && (
-                <div className="space-y-2">
-                  <label className="text-[10px] font-semibold text-muted-foreground uppercase">Regras de condição</label>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 text-xs p-2 bg-muted/50 rounded-lg">
-                      <AlertCircle className="w-3.5 h-3.5 text-primary" />
-                      <span>Se demonstrou interesse → Fechamento</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs p-2 bg-muted/50 rounded-lg">
-                      <AlertCircle className="w-3.5 h-3.5 text-primary" />
-                      <span>Se pediu valor → Bloco de preço</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs p-2 bg-muted/50 rounded-lg">
-                      <AlertCircle className="w-3.5 h-3.5 text-primary" />
-                      <span>Se pediu prova → Prova social</span>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Palavras-chave</label>
-                    <Input
-                      placeholder="Ex: interesse, quero, valor"
-                      className="mt-1 h-8 text-xs"
-                      onChange={e => setNodes(prev => prev.map(n =>
-                        n.id === selectedNode ? { ...n, data: { ...n.data, keywords: e.target.value } } : n
-                      ))}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Generic message for other blocks */}
-              {!["conteudo", "salvar", "conexao", "atraso", "remarketing", "condicao"].includes(selectedNodeData.type) && (
+            {selectedNodeData.type === "save" && (
+              <>
                 <div>
-                  <label className="text-[10px] font-semibold text-muted-foreground uppercase">Mensagem</label>
-                  <Textarea
-                    value={selectedNodeData.data?.message || ""}
-                    onChange={e => setNodes(prev => prev.map(n =>
-                      n.id === selectedNode ? { ...n, data: { ...n.data, message: e.target.value } } : n
-                    ))}
-                    className="mt-1 text-xs min-h-[80px]"
-                    placeholder="Digite a mensagem..."
+                  <label className="text-[10px] font-medium text-muted-foreground">Timeout</label>
+                  <Select
+                    value={selectedNodeData.data?.timeout || "15m"}
+                    onValueChange={v => setNodes(prev => prev.map(n => n.id === selectedNode ? { ...n, data: { ...n.data, timeout: v } } : n))}
+                  >
+                    <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>{DELAY_OPTIONS.map(d => (<SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>))}</SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground">Aguardar resposta</span>
+                  <Switch
+                    checked={selectedNodeData.data?.waitForResponse ?? true}
+                    onCheckedChange={c => setNodes(prev => prev.map(n => n.id === selectedNode ? { ...n, data: { ...n.data, waitForResponse: c } } : n))}
                   />
                 </div>
-              )}
+              </>
+            )}
 
-              {/* Connections list */}
+            {selectedNodeData.type === "smart_delay" && (
               <div>
-                <label className="text-[10px] font-semibold text-muted-foreground uppercase">Conexões</label>
-                <div className="mt-1 space-y-1">
-                  {connections.filter(c => c.from === selectedNode || c.to === selectedNode).length === 0 && (
-                    <p className="text-[9px] text-muted-foreground p-2">Nenhuma conexão</p>
-                  )}
-                  {connections.filter(c => c.from === selectedNode || c.to === selectedNode).map(conn => {
-                    const otherNode = nodes.find(n => n.id === (conn.from === selectedNode ? conn.to : conn.from));
-                    return (
-                      <div key={conn.id} className="flex items-center justify-between bg-muted/50 rounded-lg px-2.5 py-1.5">
-                        <span className="text-[10px] text-foreground">
-                          {conn.from === selectedNode ? "→" : "←"} {otherNode?.label}
-                          {conn.label && <span className="text-muted-foreground ml-1">({conn.label})</span>}
-                        </span>
-                        <button onClick={() => setConnections(prev => prev.filter(c => c.id !== conn.id))}>
-                          <Trash2 className="w-3 h-3 text-destructive" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+                <label className="text-[10px] font-medium text-muted-foreground">Tempo de Espera</label>
+                <Select
+                  value={selectedNodeData.data?.delay || "5s"}
+                  onValueChange={v => setNodes(prev => prev.map(n => n.id === selectedNode ? { ...n, data: { ...n.data, delay: v } } : n))}
+                >
+                  <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>{DELAY_OPTIONS.map(d => (<SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>))}</SelectContent>
+                </Select>
               </div>
+            )}
 
-              <Button
-                variant="destructive"
-                size="sm"
-                className="w-full text-xs gap-1.5"
-                onClick={() => deleteNode(selectedNode!)}
-              >
+            {selectedNodeData.type === "remarketing" && (
+              <div>
+                <label className="text-[10px] font-medium text-muted-foreground">Delay do Remarketing</label>
+                <Select
+                  value={selectedNodeData.data?.delay || "15m"}
+                  onValueChange={v => setNodes(prev => prev.map(n => n.id === selectedNode ? { ...n, data: { ...n.data, delay: v } } : n))}
+                >
+                  <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>{DELAY_OPTIONS.map(d => (<SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {selectedNodeData.type === "flow_connection" && (
+              <div>
+                <label className="text-[10px] font-medium text-muted-foreground">Fluxo de Destino</label>
+                <Select
+                  value={selectedNodeData.data?.targetFlow || ""}
+                  onValueChange={v => setNodes(prev => prev.map(n => n.id === selectedNode ? { ...n, data: { ...n.data, targetFlow: v } } : n))}
+                >
+                  <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{allFlows.map(f => (<SelectItem key={f} value={f}>{f}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-border">
+              <Button variant="destructive" size="sm" className="w-full text-xs gap-1.5" onClick={() => deleteNode(selectedNodeData.id)}>
                 <Trash2 className="w-3.5 h-3.5" /> Excluir Bloco
               </Button>
             </div>
