@@ -45,12 +45,14 @@ const ACTION_TYPES = [
   { value: "activate_bot", label: "Ativar robô de IA" },
 ];
 
-const AVAILABLE_FLOWS = ["Boas-vindas", "Qualificação de Lead", "Suporte Nível 1", "Pós-venda", "Remarketing 7 dias"];
+// Flows loaded from database below
 const KANBAN_STAGES = ["Novo contato", "Interessado", "Proposta", "Negociação", "Fechamento", "Pago"];
 const AVAILABLE_TAGS = ["Lead", "Cliente", "VIP", "Inativo", "Prospect"];
 
 export default function Automation() {
   const { data: rules, loading, insert, update, remove } = useSupabaseTable<DbRule>("automation_rules");
+  const { data: dbFlows, loading: loadingFlows } = useSupabaseTable<{ id: string; name: string }>("flows", "name");
+  const AVAILABLE_FLOWS = dbFlows.map(f => f.name);
   const [showCreate, setShowCreate] = useState(false);
   const [showFlowCreate, setShowFlowCreate] = useState(false);
   const [newRule, setNewRule] = useState({ name: "", triggerType: "inactivity", action: "send_message", message: "", flowName: "", delay: "", tagValue: "", stageValue: "" });
