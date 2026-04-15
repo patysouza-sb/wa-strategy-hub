@@ -30,10 +30,12 @@ interface DbBot {
   updated_at: string;
 }
 
-const AVAILABLE_FLOWS = ["Boas-vindas", "Qualificação de Lead", "Suporte Nível 1", "Pós-venda", "Remarketing 7 dias"];
+// Flows loaded from database below
 
 export default function AIService() {
   const { data: bots, loading, insert, update, remove } = useSupabaseTable<DbBot>("ai_bots");
+  const { data: dbFlows } = useSupabaseTable<{ id: string; name: string }>("flows", "name");
+  const AVAILABLE_FLOWS = dbFlows.map(f => f.name);
   const [configuring, setConfiguring] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);

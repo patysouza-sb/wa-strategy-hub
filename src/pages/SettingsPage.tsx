@@ -26,10 +26,12 @@ interface DbConnection {
   updated_at: string;
 }
 
-const FLOWS = ["Boas-vindas Padrão", "Boas-vindas VIP", "FAQ Automático", "Resposta Geral", "Pesquisa de Satisfação", "Encerramento Padrão"];
+// Flows loaded from database below
 
 export default function SettingsPage() {
   const { data: connections, loading, insert, update, remove } = useSupabaseTable<DbConnection>("whatsapp_connections");
+  const { data: dbFlows } = useSupabaseTable<{ id: string; name: string }>("flows", "name");
+  const FLOWS = dbFlows.map(f => f.name);
   const [showAddConnection, setShowAddConnection] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [qrExpired, setQrExpired] = useState(false);
