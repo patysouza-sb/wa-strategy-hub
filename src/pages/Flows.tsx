@@ -20,26 +20,26 @@ import FlowEditor from "@/components/FlowEditor";
 import { useSupabaseTable } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 
 interface DbFolder {
   id: string;
   name: string;
-  is_open: boolean;
-  sort_order: number;
+  tenant_id: string;
+  parent_folder_id: string | null;
+  path: string | null;
   created_at: string;
-  updated_at: string;
 }
 
 interface DbFlow {
   id: string;
   name: string;
+  tenant_id: string;
   folder_id: string | null;
-  shortcut: string;
+  shortcut: string | null;
   status: string;
-  nodes: any;
-  connections: any;
+  created_by: string | null;
   created_at: string;
-  updated_at: string;
 }
 
 const DEFAULT_FOLDER_NAMES = [
@@ -52,8 +52,8 @@ const DEFAULT_FOLDER_NAMES = [
 ];
 
 export default function Flows() {
-  const { data: folders, loading: foldersLoading, insert: insertFolder, update: updateFolder, remove: removeFolder, fetch: fetchFolders } = useSupabaseTable<DbFolder>("flow_folders", "sort_order");
-  const { data: flows, loading: flowsLoading, insert: insertFlow, update: updateFlow, remove: removeFlow, fetch: fetchFlows } = useSupabaseTable<DbFlow>("flows", "created_at");
+  const { data: folders, loading: foldersLoading, insert: insertFolder, update: updateFolder, remove: removeFolder, fetch: fetchFolders } = useSupabaseTable<DbFolder>("flow_folders", "name");
+  const { data: flows, loading: flowsLoading, insert: insertFlow, update: updateFlow, remove: removeFlow, fetch: fetchFlows } = useSupabaseTable<DbFlow>("automation_flows", "created_at");
 
   const [editingFlow, setEditingFlow] = useState<{ id: string; name: string } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -62,6 +62,7 @@ export default function Flows() {
   const [newFlow, setNewFlow] = useState({ name: "", shortcut: "", delay: "" });
   const [newFolderName, setNewFolderName] = useState("");
   const [initialized, setInitialized] = useState(false);
+  const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
 
   // Seed default folders if none exist
   useEffect(() => {
@@ -71,13 +72,15 @@ export default function Flows() {
         for (let i = 0; i < DEFAULT_FOLDER_NAMES.length; i++) {
           await (supabase as any).from("flow_folders").insert({
             name: DEFAULT_FOLDER_NAMES[i],
-            is_open: i === 0,
-            sort_order: i,
+            tenant_id: DEFAULT_TENANT_ID,
           });
         }
         await fetchFolders();
       };
       seedFolders();
+    } else {
+      // Open first folder by default
+      setOpenFolders(new Set([folders[0].id]));
     }
     setInitialized(true);
   }, [foldersLoading, folders.length, initialized]);
@@ -104,9 +107,13 @@ export default function Flows() {
     );
   }
 
-  const toggleFolder = async (id: string) => {
-    const folder = folders.find(f => f.id === id);
-    if (folder) await updateFolder(id, { is_open: !folder.is_open } as any);
+  const toggleFolder = (id: string) => {
+    setOpenFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const toggleStatus = async (id: string) => {
@@ -124,11 +131,10 @@ export default function Flows() {
     if (!newFlow.name) return;
     await insertFlow({
       name: newFlow.name,
+      tenant_id: DEFAULT_TENANT_ID,
       folder_id: selectedFolderId,
       shortcut: newFlow.shortcut || `/${newFlow.name.toLowerCase().replace(/\s/g, "")}`,
       status: "paused",
-      nodes: [{ id: "1", type: "inicio", label: "Início", x: 80, y: 200, color: "bg-red-500", data: { message: "" } }],
-      connections: [],
     } as any);
     setNewFlow({ name: "", shortcut: "", delay: "" });
     setShowCreate(false);
@@ -137,7 +143,7 @@ export default function Flows() {
 
   const createFolder = async () => {
     if (!newFolderName.trim()) return;
-    await insertFolder({ name: newFolderName.trim(), is_open: true, sort_order: folders.length } as any);
+    await insertFolder({ name: newFolderName.trim(), tenant_id: DEFAULT_TENANT_ID } as any);
     setNewFolderName("");
     setShowCreateFolder(false);
     toast.success("Pasta criada!");
@@ -146,11 +152,10 @@ export default function Flows() {
   const duplicateFlow = async (flow: DbFlow) => {
     await insertFlow({
       name: `${flow.name} (cópia)`,
+      tenant_id: DEFAULT_TENANT_ID,
       folder_id: flow.folder_id,
-      shortcut: flow.shortcut,
+      shortcut: null,
       status: "paused",
-      nodes: flow.nodes,
-      connections: flow.connections,
     } as any);
     toast.success("Fluxo duplicado!");
   };
@@ -161,7 +166,6 @@ export default function Flows() {
   };
 
   const deleteFolder = async (id: string) => {
-    // Delete flows in folder first
     const folderFlows = flows.filter(f => f.folder_id === id);
     for (const f of folderFlows) await removeFlow(f.id);
     await removeFolder(id);
@@ -201,11 +205,12 @@ export default function Flows() {
         <div className="space-y-2">
           {folders.map(folder => {
             const folderFlows = getFlowsInFolder(folder.id);
+            const isOpen = openFolders.has(folder.id);
             return (
               <div key={folder.id} className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => toggleFolder(folder.id)}>
                   <div className="flex items-center gap-2">
-                    {folder.is_open ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                    {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                     <Folder className="w-4 h-4 text-primary" />
                     <span className="text-sm font-semibold text-foreground">{folder.name}</span>
                     <Badge variant="secondary" className="text-[10px] ml-1">{folderFlows.length}</Badge>
@@ -227,7 +232,7 @@ export default function Flows() {
                   </div>
                 </div>
 
-                {folder.is_open && (
+                {isOpen && (
                   <div className="border-t border-border">
                     {folderFlows.length === 0 ? (
                       <div className="px-6 py-6 text-center">
@@ -255,7 +260,7 @@ export default function Flows() {
                                 </div>
                               </td>
                               <td className="py-2.5 px-5">
-                                <code className="text-xs bg-muted px-2 py-1 rounded text-foreground">{flow.shortcut}</code>
+                                <code className="text-xs bg-muted px-2 py-1 rounded text-foreground">{flow.shortcut || "-"}</code>
                               </td>
                               <td className="py-2.5 px-5 text-center">
                                 <Badge className={`text-[10px] border-0 ${flow.status === "active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
