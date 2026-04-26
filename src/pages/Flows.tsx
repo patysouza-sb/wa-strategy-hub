@@ -69,7 +69,7 @@ export default function Flows() {
   const [showCreate, setShowCreate] = useState(false);
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
-  const [newFlow, setNewFlow] = useState({ name: "", shortcut: "", delay: "" });
+  const [newFlow, setNewFlow] = useState({ name: "", shortcut: "", channelType: "whatsapp" });
   const [newFolderName, setNewFolderName] = useState("");
   const [initialized, setInitialized] = useState(false);
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
