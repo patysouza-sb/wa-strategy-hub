@@ -59,7 +59,12 @@ export default function Automation() {
   const AVAILABLE_FLOWS = dbFlows.map(f => f.name);
 
   const [showCreate, setShowCreate] = useState(false);
-  const [newRule, setNewRule] = useState({ name: "", triggerType: "inactivity", action: "send_message", message: "", flowName: "", delay: "", tagValue: "", stageValue: "" });
+  const [channelFilter, setChannelFilter] = useState<string>("all");
+  const [newRule, setNewRule] = useState({ name: "", channelType: "whatsapp", triggerType: "inactivity", action: "send_message", message: "", flowName: "", delay: "", tagValue: "", stageValue: "" });
+
+  const filteredAutomations = automations.filter(a =>
+    channelFilter === "all" ? true : (a.channel_type || "whatsapp") === channelFilter,
+  );
 
   const toggleRule = async (id: string) => {
     const r = automations.find(x => x.id === id);
