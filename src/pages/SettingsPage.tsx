@@ -125,7 +125,7 @@ export default function SettingsPage() {
 
         <Tabs defaultValue="connections">
           <TabsList>
-            <TabsTrigger value="connections">Conexões WhatsApp</TabsTrigger>
+            <TabsTrigger value="connections">Canais</TabsTrigger>
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="notifications">Notificações</TabsTrigger>
             <TabsTrigger value="account">Minha Conta</TabsTrigger>
@@ -133,9 +133,9 @@ export default function SettingsPage() {
 
           <TabsContent value="connections" className="mt-4 space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">Conecte seus números de WhatsApp para receber e enviar mensagens.</p>
+              <p className="text-sm text-muted-foreground">Conecte WhatsApp, Instagram, E-mail e outros canais de atendimento.</p>
               <Button onClick={() => setShowAddConnection(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
-                <Plus className="w-4 h-4" /> Adicionar Número
+                <Plus className="w-4 h-4" /> Adicionar Canal
               </Button>
             </div>
 
