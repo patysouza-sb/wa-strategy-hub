@@ -157,6 +157,17 @@ export default function Broadcast() {
               <label className="text-xs font-medium text-muted-foreground">Nome da Transmissão</label>
               <Input value={newBroadcast.name} onChange={e => setNewBroadcast(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Promoção de Verão" className="mt-1" />
             </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Canal</label>
+              <Select value={newBroadcast.channelType} onValueChange={v => setNewBroadcast(p => ({ ...p, channelType: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(CHANNEL_LABELS).map(([v, l]) => (
+                    <SelectItem key={v} value={v}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Tipo</label>
