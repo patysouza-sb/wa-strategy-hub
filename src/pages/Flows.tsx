@@ -21,6 +21,7 @@ import { useSupabaseTable } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant";
+import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
 
 interface DbFolder {
   id: string;
