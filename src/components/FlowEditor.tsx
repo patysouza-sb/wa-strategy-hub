@@ -99,11 +99,27 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
   };
 
   // Validation: returns map of nodeId -> array of error messages
-  const validateNodes = useCallback((nodesToCheck: FlowNode[]): Record<string, string[]> => {
+  const validateNodes = useCallback((
+    nodesToCheck: FlowNode[],
+    connectionsToCheck: FlowConnection[] = [],
+  ): Record<string, string[]> => {
     const errors: Record<string, string[]> = {};
     const push = (id: string, msg: string) => {
       (errors[id] ||= []).push(msg);
     };
+
+    // Helper: outgoing connections grouped by source node and (optionally) port
+    const outgoingByNode = new Map<string, FlowConnection[]>();
+    for (const c of connectionsToCheck) {
+      if (!outgoingByNode.has(c.from)) outgoingByNode.set(c.from, []);
+      outgoingByNode.get(c.from)!.push(c);
+    }
+    const hasOut = (nodeId: string, port?: string) => {
+      const list = outgoingByNode.get(nodeId) || [];
+      if (!port) return list.length > 0;
+      return list.some(c => (c.fromPort || "") === port);
+    };
+
     for (const n of nodesToCheck) {
       const d = n.data || {};
       if (n.type === "content") {
@@ -139,6 +155,41 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
         if (!Array.isArray(d.randomizerOptions) || d.randomizerOptions.length === 0) {
           push(n.id, "Adicione ao menos uma saída do randomizador");
         }
+      }
+
+      // ===== Connection validations (expected outputs without a wired link) =====
+      const terminalTypes = new Set(["chat_controller", "department", "flow_connection"]);
+
+      if (n.type === "menu") {
+        if (Array.isArray(d.options)) {
+          d.options.forEach((opt: any, i: number) => {
+            const port = `option_${i}`;
+            if (!hasOut(n.id, port) && !hasOut(n.id, String(i))) {
+              const label = opt?.label ? `"${opt.label}"` : `${i + 1}`;
+              push(n.id, `Opção ${label} sem conexão de saída`);
+            }
+          });
+        }
+      } else if (n.type === "randomizer") {
+        if (Array.isArray(d.randomizerOptions)) {
+          d.randomizerOptions.forEach((_: any, i: number) => {
+            const port = `random_${i}`;
+            if (!hasOut(n.id, port) && !hasOut(n.id, String(i))) {
+              push(n.id, `Saída ${i + 1} do randomizador sem conexão`);
+            }
+          });
+        }
+      } else if (n.type === "condition") {
+        if (!hasOut(n.id, "true")) push(n.id, 'Saída "Verdadeiro" sem conexão');
+        if (!hasOut(n.id, "false")) push(n.id, 'Saída "Falso" sem conexão');
+      } else if (n.type === "save") {
+        if (!hasOut(n.id, "responded")) push(n.id, 'Saída "Respondeu" sem conexão');
+        if (!hasOut(n.id, "timeout")) push(n.id, 'Saída "Timeout" sem conexão');
+        if (d.maxRetryAttempts && !hasOut(n.id, "exhausted")) {
+          push(n.id, 'Saída "Tentativas esgotadas" sem conexão');
+        }
+      } else if (!terminalTypes.has(n.type)) {
+        if (!hasOut(n.id)) push(n.id, "Bloco sem conexão de saída");
       }
     }
     return errors;
@@ -240,7 +291,7 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(async () => {
       // Validate before persisting; if invalid, surface errors and skip save
-      const errs = validateNodes(nodes);
+      const errs = validateNodes(nodes, connections);
       setValidationErrors(errs);
       if (Object.keys(errs).length > 0) return;
       // 1. Wipe existing flow data
@@ -526,7 +577,7 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
             size="sm"
             className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs"
             onClick={() => {
-              const errs = validateNodes(nodes);
+              const errs = validateNodes(nodes, connections);
               setValidationErrors(errs);
               const count = Object.keys(errs).length;
               if (count > 0) {
