@@ -1,6 +1,6 @@
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
-import { Search, Phone, Video, MoreVertical, Send, Smile, Paperclip, Mic, Star, Tag, Bot, ArrowRight, CheckCheck, Clock, MessageSquare } from "lucide-react";
+import { Search, Phone, Video, MoreVertical, Send, Smile, Paperclip, Mic, Star, Tag, Bot, ArrowRight, CheckCheck, Clock, MessageSquare, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -34,6 +34,15 @@ interface Message {
   status?: "sent" | "delivered" | "read";
 }
 
+interface AuditLog {
+  id: string;
+  conversation_id: string | null;
+  action: string;
+  performed_by_name: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
 const QUICK_REPLIES = [
   "Olá! Como posso ajudar?",
   "Vou verificar e retorno em instantes",
@@ -41,6 +50,14 @@ const QUICK_REPLIES = [
   "Segue o link para pagamento:",
   "Seu pedido está em processamento",
 ];
+
+const ACTION_LABELS: Record<string, string> = {
+  transfer_to_human: "Transferiu para humano",
+  resolve: "Finalizou atendimento",
+};
+
+// Identificação do operador atual (placeholder até auth completa)
+const CURRENT_OPERATOR = { id: null as string | null, name: "Patricia" };
 
 const queueToTab = (q: string): Tab => q === "resolved" ? "resolved" : q === "attending" ? "attending" : "waiting";
 
@@ -53,6 +70,47 @@ export default function LiveChat() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [channelFilter, setChannelFilter] = useState<string>("all");
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [showAudit, setShowAudit] = useState(false);
+
+  const loadAuditLogs = async (conversationId: ContactId) => {
+    const { data, error } = await (supabase as any)
+      .from("conversation_audit_logs")
+      .select("id, conversation_id, action, performed_by_name, notes, created_at")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Erro ao carregar auditoria:", error);
+      return;
+    }
+    setAuditLogs(data || []);
+  };
+
+  const recordAudit = async (conversationId: ContactId, action: string, notes?: string) => {
+    const { data, error } = await (supabase as any)
+      .from("conversation_audit_logs")
+      .insert({
+        conversation_id: conversationId,
+        action,
+        performed_by_user_id: CURRENT_OPERATOR.id,
+        performed_by_name: CURRENT_OPERATOR.name,
+        notes: notes || null,
+      })
+      .select()
+      .single();
+    if (error) {
+      console.error("Falha ao registrar auditoria:", error);
+      return;
+    }
+    if (selectedContact?.id === conversationId) {
+      setAuditLogs(prev => [data, ...prev]);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedContact) loadAuditLogs(selectedContact.id);
+    else setAuditLogs([]);
+  }, [selectedContact?.id]);
 
   useEffect(() => {
     (async () => {
@@ -113,13 +171,17 @@ export default function LiveChat() {
       toast.error("ID de contato inválido");
       return;
     }
-    setContacts(prev => prev.map(c => c.id === contactId ? { ...c, isBot: false, status: "attending" as Tab, assignedTo: "Patricia" } : c));
+    setContacts(prev => prev.map(c => c.id === contactId ? { ...c, isBot: false, status: "attending" as Tab, assignedTo: CURRENT_OPERATOR.name } : c));
     const { error } = await (supabase as any)
       .from("conversations")
       .update({ ai_agent_id: null, queue_status: "attending" })
       .eq("id", contactId);
-    if (error) toast.error("Erro ao transferir: " + error.message);
-    else toast.success("Contato transferido para atendente humano");
+    if (error) {
+      toast.error("Erro ao transferir: " + error.message);
+      return;
+    }
+    await recordAudit(contactId, "transfer_to_human", `Transferido para ${CURRENT_OPERATOR.name}`);
+    toast.success("Contato transferido para atendente humano");
   };
 
   const resolveChat = async (contactId: ContactId) => {
@@ -132,8 +194,12 @@ export default function LiveChat() {
       .from("conversations")
       .update({ queue_status: "resolved", resolved_at: new Date().toISOString() })
       .eq("id", contactId);
-    if (error) toast.error("Erro ao finalizar: " + error.message);
-    else toast.success("Atendimento finalizado");
+    if (error) {
+      toast.error("Erro ao finalizar: " + error.message);
+      return;
+    }
+    await recordAudit(contactId, "resolve", "Atendimento marcado como resolvido");
+    toast.success("Atendimento finalizado");
   };
 
   return (
@@ -334,8 +400,41 @@ export default function LiveChat() {
                 <div className="space-y-2">
                   <Button variant="outline" size="sm" className="w-full justify-start text-xs gap-2"><Star className="w-3.5 h-3.5" /> Marcar como VIP</Button>
                   <Button variant="outline" size="sm" className="w-full justify-start text-xs gap-2"><Tag className="w-3.5 h-3.5" /> Adicionar Tag</Button>
+                  <Button variant="outline" size="sm" className="w-full justify-start text-xs gap-2" onClick={() => setShowAudit(s => !s)}>
+                    <History className="w-3.5 h-3.5" /> {showAudit ? "Ocultar" : "Ver"} histórico de auditoria ({auditLogs.length})
+                  </Button>
                 </div>
               </div>
+              {showAudit && (
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Log de Auditoria</h4>
+                  {auditLogs.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">Nenhuma ação registrada para este atendimento.</p>
+                  ) : (
+                    <ul className="space-y-2 max-h-64 overflow-y-auto">
+                      {auditLogs.map(log => (
+                        <li key={log.id} className="text-xs border border-border rounded-md p-2 bg-muted/30">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium text-foreground">
+                              {ACTION_LABELS[log.action] || log.action}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground shrink-0">
+                              {new Date(log.created_at).toLocaleString("pt-BR", {
+                                day: "2-digit", month: "2-digit", year: "2-digit",
+                                hour: "2-digit", minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            por <span className="text-foreground">{log.performed_by_name || "Sistema"}</span>
+                          </p>
+                          {log.notes && <p className="text-[11px] text-muted-foreground mt-0.5 italic">"{log.notes}"</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

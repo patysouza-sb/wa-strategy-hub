@@ -767,6 +767,45 @@ export type Database = {
           },
         ]
       }
+      conversation_audit_logs: {
+        Row: {
+          action: string
+          contact_id: string | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          notes: string | null
+          performed_by_name: string | null
+          performed_by_user_id: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          action: string
+          contact_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          performed_by_name?: string | null
+          performed_by_user_id?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          action?: string
+          contact_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          performed_by_name?: string | null
+          performed_by_user_id?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           ai_agent_id: string | null
