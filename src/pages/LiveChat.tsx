@@ -1,15 +1,16 @@
 import { AppLayout } from "@/components/AppLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Phone, Video, MoreVertical, Send, Smile, Paperclip, Mic, Star, Tag, Bot, ArrowRight, CheckCheck, Clock, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
+import { supabase } from "@/integrations/supabase/client";
 
 type Tab = "attending" | "waiting" | "resolved";
 
 interface Contact {
-  id: number;
+  id: string;
   name: string;
   message: string;
   time: string;
@@ -40,15 +41,42 @@ const QUICK_REPLIES = [
   "Seu pedido está em processamento",
 ];
 
+const queueToTab = (q: string): Tab => q === "resolved" ? "resolved" : q === "attending" ? "attending" : "waiting";
+
 export default function LiveChat() {
   const [activeTab, setActiveTab] = useState<Tab>("attending");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [messageInput, setMessageInput] = useState("");
-  const [messages, setMessages] = useState<Record<number, Message[]>>({});
+  const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [channelFilter, setChannelFilter] = useState<string>("all");
+
+  useEffect(() => {
+    (async () => {
+      const { data: convs } = await (supabase as any)
+        .from("conversations")
+        .select("id, queue_status, channel_type, last_message_at, contact_id, ai_agent_id, contacts(name, phone_number)")
+        .order("last_message_at", { ascending: false });
+      if (!convs) return;
+      setContacts(convs.map((c: any) => ({
+        id: c.id,
+        name: c.contacts?.name || c.contacts?.phone_number || "Contato",
+        message: "",
+        time: c.last_message_at ? new Date(c.last_message_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "",
+        unread: 0,
+        status: queueToTab(c.queue_status),
+        avatar: (c.contacts?.name || "?").substring(0, 2).toUpperCase(),
+        phone: c.contacts?.phone_number || "",
+        tags: [],
+        stage: "",
+        assignedTo: "",
+        isBot: !!c.ai_agent_id,
+        channel: c.channel_type || "whatsapp",
+      })));
+    })();
+  }, []);
 
   const filteredContacts = contacts
     .filter(c => c.status === activeTab)
