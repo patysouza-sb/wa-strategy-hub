@@ -157,27 +157,26 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
         }
       }
 
-      // ===== Connection validations (expected outputs without a wired link) =====
+      // ===== Connection validations =====
+      // Terminal blocks legitimately end the flow path (no outgoing required)
       const terminalTypes = new Set(["chat_controller", "department", "flow_connection"]);
+      const out = outgoingByNode.get(n.id) || [];
 
       if (n.type === "menu") {
-        if (Array.isArray(d.options)) {
-          d.options.forEach((opt: any, i: number) => {
-            const port = `option_${i}`;
-            if (!hasOut(n.id, port) && !hasOut(n.id, String(i))) {
-              const label = opt?.label ? `"${opt.label}"` : `${i + 1}`;
-              push(n.id, `Opção ${label} sem conexão de saída`);
-            }
-          });
+        const optsCount = Array.isArray(d.options) ? d.options.length : 0;
+        if (optsCount > 0 && out.length < optsCount) {
+          push(
+            n.id,
+            `Menu tem ${optsCount} opção(ões) mas apenas ${out.length} conexão(ões) — conecte uma saída para cada opção`,
+          );
         }
       } else if (n.type === "randomizer") {
-        if (Array.isArray(d.randomizerOptions)) {
-          d.randomizerOptions.forEach((_: any, i: number) => {
-            const port = `random_${i}`;
-            if (!hasOut(n.id, port) && !hasOut(n.id, String(i))) {
-              push(n.id, `Saída ${i + 1} do randomizador sem conexão`);
-            }
-          });
+        const branches = Array.isArray(d.randomizerOptions) ? d.randomizerOptions.length : 0;
+        if (branches > 0 && out.length < branches) {
+          push(
+            n.id,
+            `Randomizador tem ${branches} ramo(s) mas apenas ${out.length} conexão(ões)`,
+          );
         }
       } else if (n.type === "condition") {
         if (!hasOut(n.id, "true")) push(n.id, 'Saída "Verdadeiro" sem conexão');
@@ -188,12 +187,48 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
         if (d.maxRetryAttempts && !hasOut(n.id, "exhausted")) {
           push(n.id, 'Saída "Tentativas esgotadas" sem conexão');
         }
+      } else if (n.type === "flow_connection") {
+        // Terminal: no outgoing required, but target flow must be valid
+        if (d.targetFlow && allFlows.length > 0 && !allFlows.includes(String(d.targetFlow))) {
+          push(n.id, `Fluxo de destino "${d.targetFlow}" não existe`);
+        }
       } else if (!terminalTypes.has(n.type)) {
-        if (!hasOut(n.id)) push(n.id, "Bloco sem conexão de saída");
+        if (out.length === 0) push(n.id, "Bloco sem conexão de saída");
       }
     }
+
+    // ===== Per-connection compatibility checks =====
+    const nodeIds = new Set(nodesToCheck.map(n => n.id));
+    const seenPairs = new Set<string>();
+    for (const c of connectionsToCheck) {
+      const fromNode = nodesToCheck.find(n => n.id === c.from);
+      if (!fromNode) continue;
+
+      // Self-loop
+      if (c.from === c.to) {
+        push(c.from, "Conexão inválida: bloco conectado a si mesmo");
+        continue;
+      }
+      // Target node missing
+      if (!nodeIds.has(c.to)) {
+        push(c.from, "Conexão aponta para um bloco inexistente");
+        continue;
+      }
+      // Terminal nodes shouldn't have outgoing connections
+      if (terminalTypes.has(fromNode.type)) {
+        push(c.from, `Bloco terminal "${fromNode.label}" não deve ter saída`);
+      }
+      // Duplicate connection on the same port
+      const key = `${c.from}::${c.fromPort || ""}::${c.to}`;
+      if (seenPairs.has(key)) {
+        push(c.from, "Conexão duplicada para o mesmo destino");
+      } else {
+        seenPairs.add(key);
+      }
+    }
+
     return errors;
-  }, []);
+  }, [allFlows]);
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
 
