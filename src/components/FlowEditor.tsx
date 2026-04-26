@@ -120,6 +120,8 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
       return list.some(c => (c.fromPort || "") === port);
     };
 
+    const terminalTypes = new Set(["chat_controller", "department", "flow_connection"]);
+
     for (const n of nodesToCheck) {
       const d = n.data || {};
       if (n.type === "content") {
