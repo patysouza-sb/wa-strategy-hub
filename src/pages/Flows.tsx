@@ -73,6 +73,7 @@ export default function Flows() {
   const [newFolderName, setNewFolderName] = useState("");
   const [initialized, setInitialized] = useState(false);
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
+  const [channelFilter, setChannelFilter] = useState<string>("all");
 
   // Seed default folders if none exist
   useEffect(() => {
