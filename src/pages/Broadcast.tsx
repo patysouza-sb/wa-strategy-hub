@@ -63,11 +63,12 @@ export default function Broadcast() {
       id: Date.now(),
       name: newBroadcast.name,
       type: newBroadcast.type === "all" ? "Todos contatos" : newBroadcast.type === "list" ? "Lista" : "Etiqueta",
+      channelType: newBroadcast.channelType,
       status: "draft",
       sent: 0,
       date: new Date().toLocaleDateString("pt-BR"),
     }]);
-    setNewBroadcast({ name: "", type: "all", tag: "", message: "", delayMinutes: "1", mediaFiles: [], includeAudio: false, audioDelayMinutes: "2" });
+    setNewBroadcast({ name: "", type: "all", channelType: "whatsapp", tag: "", message: "", delayMinutes: "1", mediaFiles: [], includeAudio: false, audioDelayMinutes: "2" });
     setShowCreate(false);
     toast.success("Transmissão criada com sucesso!");
   };
