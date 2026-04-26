@@ -59,20 +59,20 @@ export default function Broadcast() {
     setNewBroadcast(p => ({ ...p, mediaFiles: p.mediaFiles.filter(f => f.id !== id) }));
   };
 
-  const createBroadcast = () => {
+  const createBroadcast = async () => {
     if (!newBroadcast.name || !newBroadcast.message) return;
-    setBroadcasts(prev => [...prev, {
-      id: Date.now(),
+    const inserted = await insert({
       name: newBroadcast.name,
-      type: newBroadcast.type === "all" ? "Todos contatos" : newBroadcast.type === "list" ? "Lista" : "Etiqueta",
-      channelType: newBroadcast.channelType,
+      type: newBroadcast.type === "all" ? "all" : newBroadcast.type === "list" ? "contact_list" : "tag",
+      channel_type: newBroadcast.channelType,
       status: "draft",
-      sent: 0,
-      date: new Date().toLocaleDateString("pt-BR"),
-    }]);
-    setNewBroadcast({ name: "", type: "all", channelType: "whatsapp", tag: "", message: "", delayMinutes: "1", mediaFiles: [], includeAudio: false, audioDelayMinutes: "2" });
-    setShowCreate(false);
-    toast.success("Transmissão criada com sucesso!");
+      tenant_id: DEFAULT_TENANT_ID,
+    } as any);
+    if (inserted) {
+      setNewBroadcast({ name: "", type: "all", channelType: "whatsapp", tag: "", message: "", delayMinutes: "1", mediaFiles: [], includeAudio: false, audioDelayMinutes: "2" });
+      setShowCreate(false);
+      toast.success("Transmissão criada com sucesso!");
+    }
   };
 
   return (
