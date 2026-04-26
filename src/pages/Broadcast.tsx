@@ -81,9 +81,12 @@ export default function Broadcast() {
             <h1 className="text-2xl font-bold text-foreground">Transmissão</h1>
             <p className="text-sm text-muted-foreground">Envie mensagens em massa com mídia, áudios e intervalos configuráveis</p>
           </div>
-          <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
-            <Plus className="w-4 h-4" /> Nova Transmissão
-          </Button>
+          <div className="flex items-center gap-2">
+            <ChannelFilter value={channelFilter} onChange={setChannelFilter} />
+            <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
+              <Plus className="w-4 h-4" /> Nova Transmissão
+            </Button>
+          </div>
         </div>
 
         {broadcasts.length === 0 ? (
