@@ -8,9 +8,10 @@ import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
 import { supabase } from "@/integrations/supabase/client";
 
 type Tab = "attending" | "waiting" | "resolved";
+type ContactId = string; // UUID da conversation — sempre string para evitar mismatch com number
 
 interface Contact {
-  id: string;
+  id: ContactId;
   name: string;
   message: string;
   time: string;
