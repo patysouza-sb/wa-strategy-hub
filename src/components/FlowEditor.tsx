@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 interface FlowNode {
   id: string;
@@ -96,7 +98,54 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
     return `${value}${suf}`;
   };
 
-  // Load nodes, connections and per-node detail tables
+  // Validation: returns map of nodeId -> array of error messages
+  const validateNodes = useCallback((nodesToCheck: FlowNode[]): Record<string, string[]> => {
+    const errors: Record<string, string[]> = {};
+    const push = (id: string, msg: string) => {
+      (errors[id] ||= []).push(msg);
+    };
+    for (const n of nodesToCheck) {
+      const d = n.data || {};
+      if (n.type === "content") {
+        const ct = d.contentType || "text";
+        if (ct === "text") {
+          if (!d.message || !String(d.message).trim()) push(n.id, "Mensagem é obrigatória");
+        } else {
+          if (!d.mediaUrl && !d.fileName) push(n.id, "Arquivo de mídia é obrigatório");
+        }
+      }
+      if (n.type === "menu") {
+        if (!Array.isArray(d.options) || d.options.length === 0) {
+          push(n.id, "Adicione ao menos uma opção de menu");
+        } else {
+          d.options.forEach((opt: any, i: number) => {
+            if (!opt?.label || !String(opt.label).trim()) push(n.id, `Opção ${i + 1}: rótulo obrigatório`);
+          });
+        }
+      }
+      if (n.type === "flow_connection") {
+        if (!d.targetFlow || !String(d.targetFlow).trim()) push(n.id, "Selecione o fluxo de destino");
+      }
+      if (n.type === "tag") {
+        if (!d.tagId || !String(d.tagId).trim()) push(n.id, "Selecione uma etiqueta");
+      }
+      if (n.type === "save") {
+        if (!d.message || !String(d.message).trim()) push(n.id, "Mensagem antes da espera é obrigatória");
+      }
+      if (n.type === "remarketing") {
+        if (!d.message || !String(d.message).trim()) push(n.id, "Mensagem do remarketing é obrigatória");
+      }
+      if (n.type === "randomizer") {
+        if (!Array.isArray(d.randomizerOptions) || d.randomizerOptions.length === 0) {
+          push(n.id, "Adicione ao menos uma saída do randomizador");
+        }
+      }
+    }
+    return errors;
+  }, []);
+
+  const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
+
   useEffect(() => {
     if (!flowId) return;
     const load = async () => {
@@ -190,7 +239,12 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
     if (!flowId) return;
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(async () => {
+      // Validate before persisting; if invalid, surface errors and skip save
+      const errs = validateNodes(nodes);
+      setValidationErrors(errs);
+      if (Object.keys(errs).length > 0) return;
       // 1. Wipe existing flow data
+
       const { data: existingNodes } = await (supabase as any)
         .from("flow_nodes")
         .select("id")
@@ -303,7 +357,7 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
       }
     }, 2000);
     return () => { if (saveTimeout.current) clearTimeout(saveTimeout.current); };
-  }, [nodes, connections, flowId]);
+  }, [nodes, connections, flowId, validateNodes]);
 
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -468,7 +522,24 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
           <Button variant="outline" size="sm" className="gap-1.5 text-xs">
             <Share2 className="w-3.5 h-3.5" /> Compartilhar
           </Button>
-          <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs">
+          <Button
+            size="sm"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs"
+            onClick={() => {
+              const errs = validateNodes(nodes);
+              setValidationErrors(errs);
+              const count = Object.keys(errs).length;
+              if (count > 0) {
+                const firstId = Object.keys(errs)[0];
+                setSelectedNode(firstId);
+                toast.error(`Não foi possível salvar: ${count} bloco(s) com erros`, {
+                  description: errs[firstId][0],
+                });
+              } else {
+                toast.success("Fluxo válido — alterações salvas");
+              }
+            }}
+          >
             <Save className="w-3.5 h-3.5" /> Salvar Fluxo
           </Button>
         </div>
@@ -553,6 +624,7 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
               const Icon = bt.icon;
               const isSelected = selectedNode === node.id;
               const isConnectingThis = connecting?.nodeId === node.id;
+              const hasError = !!validationErrors[node.id]?.length;
 
               return (
                 <div
@@ -563,8 +635,14 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
                   onClick={e => e.stopPropagation()}
                 >
                   <div className={`min-w-[200px] bg-card rounded-xl shadow-md border-2 transition-all ${
+                    hasError ? "border-destructive shadow-lg" :
                     isSelected ? "border-primary shadow-lg" : isConnectingThis ? "border-blue-400" : "border-transparent hover:border-border"
                   }`}>
+                    {hasError && (
+                      <div className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center shadow-md z-10" title={validationErrors[node.id].join("\n")}>
+                        <AlertCircle className="w-3 h-3" />
+                      </div>
+                    )}
                     {/* Header */}
                     <div className={`flex items-center gap-2 px-3 py-2 rounded-t-[10px] ${bt.color} text-white`}>
                       <Icon className="w-3.5 h-3.5" />
@@ -682,6 +760,16 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
                 <X className="w-3.5 h-3.5" />
               </Button>
             </div>
+            {validationErrors[selectedNodeData.id]?.length > 0 && (
+              <Alert variant="destructive" className="py-2">
+                <AlertCircle className="w-3.5 h-3.5" />
+                <AlertDescription className="text-[10px] space-y-0.5">
+                  {validationErrors[selectedNodeData.id].map((err, i) => (
+                    <div key={i}>• {err}</div>
+                  ))}
+                </AlertDescription>
+              </Alert>
+            )}
             <div>
               <label className="text-[10px] font-medium text-muted-foreground">Rótulo</label>
               <Input
