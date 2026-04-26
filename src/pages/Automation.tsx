@@ -84,6 +84,7 @@ export default function Automation() {
     const inserted = await insert({
       name: `${rule.name} (cópia)`,
       tenant_id: DEFAULT_TENANT_ID,
+      channel_type: rule.channel_type || "whatsapp",
       status: "inactive",
     } as any);
     if (inserted) {
