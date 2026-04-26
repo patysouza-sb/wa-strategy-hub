@@ -30,8 +30,8 @@ export function AppSidebar() {
           <Zap className="w-5 h-5 text-primary-foreground" />
         </div>
         <div>
-          <h1 className="text-sm font-bold text-sidebar-active">Zap Estratégico</h1>
-          <p className="text-[10px] text-sidebar-muted">Venda mais pelo WhatsApp</p>
+          <h1 className="text-sm font-bold text-sidebar-active">AtendFlow</h1>
+          <p className="text-[10px] text-sidebar-muted">Atendimento inteligente</p>
         </div>
       </div>
 
