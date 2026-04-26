@@ -400,8 +400,41 @@ export default function LiveChat() {
                 <div className="space-y-2">
                   <Button variant="outline" size="sm" className="w-full justify-start text-xs gap-2"><Star className="w-3.5 h-3.5" /> Marcar como VIP</Button>
                   <Button variant="outline" size="sm" className="w-full justify-start text-xs gap-2"><Tag className="w-3.5 h-3.5" /> Adicionar Tag</Button>
+                  <Button variant="outline" size="sm" className="w-full justify-start text-xs gap-2" onClick={() => setShowAudit(s => !s)}>
+                    <History className="w-3.5 h-3.5" /> {showAudit ? "Ocultar" : "Ver"} histórico de auditoria ({auditLogs.length})
+                  </Button>
                 </div>
               </div>
+              {showAudit && (
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Log de Auditoria</h4>
+                  {auditLogs.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">Nenhuma ação registrada para este atendimento.</p>
+                  ) : (
+                    <ul className="space-y-2 max-h-64 overflow-y-auto">
+                      {auditLogs.map(log => (
+                        <li key={log.id} className="text-xs border border-border rounded-md p-2 bg-muted/30">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium text-foreground">
+                              {ACTION_LABELS[log.action] || log.action}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground shrink-0">
+                              {new Date(log.created_at).toLocaleString("pt-BR", {
+                                day: "2-digit", month: "2-digit", year: "2-digit",
+                                hour: "2-digit", minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            por <span className="text-foreground">{log.performed_by_name || "Sistema"}</span>
+                          </p>
+                          {log.notes && <p className="text-[11px] text-muted-foreground mt-0.5 italic">"{log.notes}"</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
