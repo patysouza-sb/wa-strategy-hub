@@ -135,8 +135,8 @@ export default function Broadcast() {
                           {b.status === "sent" ? "Enviado" : b.status === "scheduled" ? "Agendado" : "Rascunho"}
                         </Badge>
                       </td>
-                      <td className="py-3 px-5 text-center text-foreground">{b.sent}</td>
-                      <td className="py-3 px-5 text-center text-muted-foreground">{b.date}</td>
+                      <td className="py-3 px-5 text-center text-foreground">0</td>
+                      <td className="py-3 px-5 text-center text-muted-foreground">{b.created_at ? new Date(b.created_at).toLocaleDateString("pt-BR") : "-"}</td>
                       <td className="py-3 px-5 text-right">
                         <Button variant="ghost" size="icon" className="w-7 h-7"><MoreVertical className="w-3.5 h-3.5" /></Button>
                       </td>
