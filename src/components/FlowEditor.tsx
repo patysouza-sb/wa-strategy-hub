@@ -522,7 +522,24 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
           <Button variant="outline" size="sm" className="gap-1.5 text-xs">
             <Share2 className="w-3.5 h-3.5" /> Compartilhar
           </Button>
-          <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs">
+          <Button
+            size="sm"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs"
+            onClick={() => {
+              const errs = validateNodes(nodes);
+              setValidationErrors(errs);
+              const count = Object.keys(errs).length;
+              if (count > 0) {
+                const firstId = Object.keys(errs)[0];
+                setSelectedNode(firstId);
+                toast.error(`Não foi possível salvar: ${count} bloco(s) com erros`, {
+                  description: errs[firstId][0],
+                });
+              } else {
+                toast.success("Fluxo válido — alterações salvas");
+              }
+            }}
+          >
             <Save className="w-3.5 h-3.5" /> Salvar Fluxo
           </Button>
         </div>
