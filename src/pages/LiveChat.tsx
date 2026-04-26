@@ -151,7 +151,12 @@ export default function LiveChat() {
                     <span className="text-sm font-medium text-foreground">{contact.name}</span>
                     <span className="text-[10px] text-muted-foreground">{contact.time}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">{contact.message}</p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <Badge variant="outline" className="text-[8px] py-0 px-1.5 h-3.5">
+                      {CHANNEL_LABELS[contact.channel || "whatsapp"] || contact.channel}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground truncate flex-1">{contact.message}</p>
+                  </div>
                 </div>
                 {contact.unread > 0 && (
                   <span className="w-5 h-5 rounded-full bg-success text-white text-[10px] font-bold flex items-center justify-center shrink-0">
