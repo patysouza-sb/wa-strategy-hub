@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
+import { useSupabaseTable } from "@/hooks/useSupabaseData";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 
 interface MediaFile {
   id: number;
@@ -18,18 +20,18 @@ interface MediaFile {
   size: string;
 }
 
-interface BroadcastItem {
-  id: number;
+interface BroadcastRow {
+  id: string;
   name: string;
   type: string;
-  channelType: string;
-  status: "sent" | "scheduled" | "draft";
-  sent: number;
-  date: string;
+  channel_type: string;
+  status: string;
+  created_at?: string;
+  scheduled_at?: string | null;
 }
 
 export default function Broadcast() {
-  const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>([]);
+  const { data: broadcasts, insert } = useSupabaseTable<BroadcastRow>("broadcasts", "created_at");
   const [showCreate, setShowCreate] = useState(false);
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [newBroadcast, setNewBroadcast] = useState({
