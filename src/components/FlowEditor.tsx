@@ -577,7 +577,7 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
             size="sm"
             className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs"
             onClick={() => {
-              const errs = validateNodes(nodes);
+              const errs = validateNodes(nodes, connections);
               setValidationErrors(errs);
               const count = Object.keys(errs).length;
               if (count > 0) {
