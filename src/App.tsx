@@ -3,7 +3,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
+import Login from "./pages/Login";
 import LiveChat from "./pages/LiveChat";
 import Kanban from "./pages/Kanban";
 import AIService from "./pages/AIService";
@@ -18,26 +21,31 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const protect = (el: JSX.Element) => <ProtectedRoute>{el}</ProtectedRoute>;
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/chat" element={<LiveChat />} />
-          <Route path="/kanban" element={<Kanban />} />
-          <Route path="/ai-service" element={<AIService />} />
-          <Route path="/flows" element={<Flows />} />
-          <Route path="/broadcast" element={<Broadcast />} />
-          <Route path="/audience" element={<Audience />} />
-          <Route path="/group-manager" element={<GroupManager />} />
-          <Route path="/automation" element={<Automation />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/support" element={<Support />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={protect(<Index />)} />
+            <Route path="/chat" element={protect(<LiveChat />)} />
+            <Route path="/kanban" element={protect(<Kanban />)} />
+            <Route path="/ai-service" element={protect(<AIService />)} />
+            <Route path="/flows" element={protect(<Flows />)} />
+            <Route path="/broadcast" element={protect(<Broadcast />)} />
+            <Route path="/audience" element={protect(<Audience />)} />
+            <Route path="/group-manager" element={protect(<GroupManager />)} />
+            <Route path="/automation" element={protect(<Automation />)} />
+            <Route path="/settings" element={protect(<SettingsPage />)} />
+            <Route path="/support" element={protect(<Support />)} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
