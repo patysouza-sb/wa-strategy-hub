@@ -38,9 +38,19 @@ interface DbFlow {
   folder_id: string | null;
   shortcut: string | null;
   status: string;
+  channel_type: string;
   created_by: string | null;
   created_at: string;
 }
+
+const CHANNEL_OPTIONS = [
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "whatsapp_official", label: "WhatsApp Oficial" },
+  { value: "instagram", label: "Instagram" },
+  { value: "messenger", label: "Messenger" },
+  { value: "email", label: "E-mail" },
+  { value: "widget", label: "Widget Web" },
+];
 
 const DEFAULT_FOLDER_NAMES = [
   "ATENDIMENTOS FUNIL SCRIPT",
@@ -59,7 +69,7 @@ export default function Flows() {
   const [showCreate, setShowCreate] = useState(false);
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
-  const [newFlow, setNewFlow] = useState({ name: "", shortcut: "", delay: "" });
+  const [newFlow, setNewFlow] = useState({ name: "", shortcut: "", channelType: "whatsapp" });
   const [newFolderName, setNewFolderName] = useState("");
   const [initialized, setInitialized] = useState(false);
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
@@ -123,7 +133,7 @@ export default function Flows() {
 
   const openCreateInFolder = (folderId: string) => {
     setSelectedFolderId(folderId);
-    setNewFlow({ name: "", shortcut: "", delay: "" });
+    setNewFlow({ name: "", shortcut: "", channelType: "whatsapp" });
     setShowCreate(true);
   };
 
@@ -134,9 +144,10 @@ export default function Flows() {
       tenant_id: DEFAULT_TENANT_ID,
       folder_id: selectedFolderId,
       shortcut: newFlow.shortcut || `/${newFlow.name.toLowerCase().replace(/\s/g, "")}`,
+      channel_type: newFlow.channelType,
       status: "paused",
     } as any);
-    setNewFlow({ name: "", shortcut: "", delay: "" });
+    setNewFlow({ name: "", shortcut: "", channelType: "whatsapp" });
     setShowCreate(false);
     toast.success("Fluxo criado!");
   };
@@ -155,6 +166,7 @@ export default function Flows() {
       tenant_id: DEFAULT_TENANT_ID,
       folder_id: flow.folder_id,
       shortcut: null,
+      channel_type: flow.channel_type || "whatsapp",
       status: "paused",
     } as any);
     toast.success("Fluxo duplicado!");
@@ -320,6 +332,15 @@ export default function Flows() {
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {folders.map(f => (<SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Canal</label>
+              <Select value={newFlow.channelType} onValueChange={v => setNewFlow(p => ({ ...p, channelType: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CHANNEL_OPTIONS.map(c => (<SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>

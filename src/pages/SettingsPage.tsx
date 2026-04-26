@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { Phone, Plus, Trash2, Wifi, WifiOff, QrCode, RefreshCw } from "lucide-react";
+import { Phone, Plus, Trash2, Wifi, WifiOff, QrCode, RefreshCw, MessageCircle, Instagram, Mail, Globe } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,10 @@ import { toast } from "sonner";
 import { useSupabaseTable } from "@/hooks/useSupabaseData";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 
-interface DbInstance {
+interface DbChannel {
   id: string;
   tenant_id: string;
+  channel_type: string;
   display_name: string;
   phone_number: string | null;
   status: string;
@@ -23,21 +24,31 @@ interface DbInstance {
   welcome_flow_id: string | null;
   default_response_flow_id: string | null;
   closed_flow_id: string | null;
-  default_response_delay_hours: number;
+  default_response_delay_value: number;
+  default_response_delay_unit: string;
   qr_code: string | null;
-  connected_at: string | null;
+  last_connected_at: string | null;
   created_at: string;
 }
 
+const CHANNEL_TYPES: { value: string; label: string; icon: any }[] = [
+  { value: "whatsapp", label: "WhatsApp", icon: MessageCircle },
+  { value: "whatsapp_official", label: "WhatsApp Oficial", icon: MessageCircle },
+  { value: "instagram", label: "Instagram", icon: Instagram },
+  { value: "messenger", label: "Messenger", icon: MessageCircle },
+  { value: "email", label: "E-mail", icon: Mail },
+  { value: "widget", label: "Widget Web", icon: Globe },
+];
+
 export default function SettingsPage() {
-  const { data: instances, loading, insert, update, remove } = useSupabaseTable<DbInstance>("whatsapp_instances");
+  const { data: instances, loading, insert, update, remove } = useSupabaseTable<DbChannel>("channels");
   const { data: dbFlows } = useSupabaseTable<{ id: string; name: string }>("automation_flows", "name");
   const [showAddConnection, setShowAddConnection] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [qrExpired, setQrExpired] = useState(false);
   const [qrTimer, setQrTimer] = useState(60);
-  const [newConn, setNewConn] = useState({ name: "", phone: "", welcomeFlowId: "", defaultFlowId: "", closedFlowId: "" });
-  const [editingConn, setEditingConn] = useState<DbInstance | null>(null);
+  const [newConn, setNewConn] = useState({ name: "", phone: "", channelType: "whatsapp", welcomeFlowId: "", defaultFlowId: "", closedFlowId: "" });
+  const [editingConn, setEditingConn] = useState<DbChannel | null>(null);
 
   useEffect(() => {
     if (!showQRCode || qrExpired) return;
@@ -66,6 +77,7 @@ export default function SettingsPage() {
   const confirmQRConnection = async () => {
     await insert({
       tenant_id: DEFAULT_TENANT_ID,
+      channel_type: newConn.channelType,
       display_name: newConn.name,
       phone_number: newConn.phone,
       status: "connected",
@@ -73,18 +85,18 @@ export default function SettingsPage() {
       welcome_flow_id: newConn.welcomeFlowId || null,
       default_response_flow_id: newConn.defaultFlowId || null,
       closed_flow_id: newConn.closedFlowId || null,
-      connected_at: new Date().toISOString(),
+      last_connected_at: new Date().toISOString(),
     } as any);
-    setNewConn({ name: "", phone: "", welcomeFlowId: "", defaultFlowId: "", closedFlowId: "" });
+    setNewConn({ name: "", phone: "", channelType: "whatsapp", welcomeFlowId: "", defaultFlowId: "", closedFlowId: "" });
     setShowQRCode(false);
-    toast.success("WhatsApp conectado com sucesso!");
+    toast.success("Canal conectado com sucesso!");
   };
 
   const toggleConnection = async (id: string) => {
     const conn = instances.find(c => c.id === id);
     if (!conn) return;
     const newStatus = conn.status === "connected" ? "disconnected" : "connected";
-    await update(id, { status: newStatus, connected_at: newStatus === "connected" ? new Date().toISOString() : conn.connected_at } as any);
+    await update(id, { status: newStatus, last_connected_at: newStatus === "connected" ? new Date().toISOString() : conn.last_connected_at } as any);
   };
 
   const removeConnection = async (id: string) => {
@@ -113,7 +125,7 @@ export default function SettingsPage() {
 
         <Tabs defaultValue="connections">
           <TabsList>
-            <TabsTrigger value="connections">Conexões WhatsApp</TabsTrigger>
+            <TabsTrigger value="connections">Canais</TabsTrigger>
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="notifications">Notificações</TabsTrigger>
             <TabsTrigger value="account">Minha Conta</TabsTrigger>
@@ -121,9 +133,9 @@ export default function SettingsPage() {
 
           <TabsContent value="connections" className="mt-4 space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">Conecte seus números de WhatsApp para receber e enviar mensagens.</p>
+              <p className="text-sm text-muted-foreground">Conecte WhatsApp, Instagram, E-mail e outros canais de atendimento.</p>
               <Button onClick={() => setShowAddConnection(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
-                <Plus className="w-4 h-4" /> Adicionar Número
+                <Plus className="w-4 h-4" /> Adicionar Canal
               </Button>
             </div>
 
@@ -223,10 +235,19 @@ export default function SettingsPage() {
 
       <Dialog open={showAddConnection} onOpenChange={setShowAddConnection}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Adicionar Número WhatsApp</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Adicionar Canal</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Tipo de Canal</label>
+              <Select value={newConn.channelType} onValueChange={v => setNewConn(p => ({ ...p, channelType: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CHANNEL_TYPES.map(c => (<SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
             <div><label className="text-xs font-medium text-muted-foreground">Nome da Conexão</label><Input value={newConn.name} onChange={e => setNewConn(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Atendimento Principal" className="mt-1" /></div>
-            <div><label className="text-xs font-medium text-muted-foreground">Número do WhatsApp</label><Input value={newConn.phone} onChange={e => setNewConn(p => ({ ...p, phone: e.target.value }))} placeholder="+55 11 99999-0000" className="mt-1" /></div>
+            <div><label className="text-xs font-medium text-muted-foreground">Número / Identificador</label><Input value={newConn.phone} onChange={e => setNewConn(p => ({ ...p, phone: e.target.value }))} placeholder="+55 11 99999-0000" className="mt-1" /></div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Fluxo de Boas-vindas</label>
@@ -315,9 +336,22 @@ export default function SettingsPage() {
                   </Select>
                 </div>
               </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Delay de Resposta Padrão (horas)</label>
-                <Input type="number" value={editingConn.default_response_delay_hours} onChange={e => updateConnField(editingConn.id, "default_response_delay_hours", e.target.value)} className="mt-1" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Delay de Resposta Padrão</label>
+                  <Input type="number" value={editingConn.default_response_delay_value} onChange={e => updateConnField(editingConn.id, "default_response_delay_value", e.target.value)} className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Unidade</label>
+                  <Select value={editingConn.default_response_delay_unit} onValueChange={v => updateConnField(editingConn.id, "default_response_delay_unit", v)}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="minutes">Minutos</SelectItem>
+                      <SelectItem value="hours">Horas</SelectItem>
+                      <SelectItem value="days">Dias</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           )}

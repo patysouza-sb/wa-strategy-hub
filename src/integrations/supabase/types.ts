@@ -85,13 +85,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "ai_agents_instance_id_fkey"
-            columns: ["instance_id"]
-            isOneToOne: false
-            referencedRelation: "whatsapp_instances"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "ai_agents_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -137,6 +130,7 @@ export type Database = {
       }
       automation_flows: {
         Row: {
+          channel_type: string
           created_at: string
           created_by: string | null
           folder_id: string | null
@@ -147,6 +141,7 @@ export type Database = {
           tenant_id: string
         }
         Insert: {
+          channel_type?: string
           created_at?: string
           created_by?: string | null
           folder_id?: string | null
@@ -157,6 +152,7 @@ export type Database = {
           tenant_id: string
         }
         Update: {
+          channel_type?: string
           created_at?: string
           created_by?: string | null
           folder_id?: string | null
@@ -332,11 +328,11 @@ export type Database = {
       }
       broadcasts: {
         Row: {
+          channel_id: string | null
           created_at: string
           created_by: string | null
           flow_id: string | null
           id: string
-          instance_id: string
           name: string
           scheduled_at: string | null
           status: string
@@ -344,11 +340,11 @@ export type Database = {
           type: string
         }
         Insert: {
+          channel_id?: string | null
           created_at?: string
           created_by?: string | null
           flow_id?: string | null
           id?: string
-          instance_id: string
           name: string
           scheduled_at?: string | null
           status?: string
@@ -356,11 +352,11 @@ export type Database = {
           type?: string
         }
         Update: {
+          channel_id?: string | null
           created_at?: string
           created_by?: string | null
           flow_id?: string | null
           id?: string
-          instance_id?: string
           name?: string
           scheduled_at?: string | null
           status?: string
@@ -368,6 +364,13 @@ export type Database = {
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "broadcasts_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "broadcasts_created_by_fkey"
             columns: ["created_by"]
@@ -380,13 +383,6 @@ export type Database = {
             columns: ["flow_id"]
             isOneToOne: false
             referencedRelation: "automation_flows"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "broadcasts_instance_id_fkey"
-            columns: ["instance_id"]
-            isOneToOne: false
-            referencedRelation: "whatsapp_instances"
             referencedColumns: ["id"]
           },
           {
@@ -500,6 +496,104 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channels: {
+        Row: {
+          agent_ia_label: string | null
+          auth_type: string | null
+          channel_type: string
+          closed_flow_id: string | null
+          created_at: string
+          default_response_delay_unit: string
+          default_response_delay_value: number
+          default_response_flow_id: string | null
+          display_name: string
+          id: string
+          is_default: boolean
+          last_connected_at: string | null
+          phone_number: string | null
+          proxy_url: string | null
+          qr_code: string | null
+          status: string
+          tenant_id: string
+          token: string | null
+          use_proxy: boolean
+          welcome_flow_id: string | null
+        }
+        Insert: {
+          agent_ia_label?: string | null
+          auth_type?: string | null
+          channel_type?: string
+          closed_flow_id?: string | null
+          created_at?: string
+          default_response_delay_unit?: string
+          default_response_delay_value?: number
+          default_response_flow_id?: string | null
+          display_name: string
+          id?: string
+          is_default?: boolean
+          last_connected_at?: string | null
+          phone_number?: string | null
+          proxy_url?: string | null
+          qr_code?: string | null
+          status?: string
+          tenant_id: string
+          token?: string | null
+          use_proxy?: boolean
+          welcome_flow_id?: string | null
+        }
+        Update: {
+          agent_ia_label?: string | null
+          auth_type?: string | null
+          channel_type?: string
+          closed_flow_id?: string | null
+          created_at?: string
+          default_response_delay_unit?: string
+          default_response_delay_value?: number
+          default_response_flow_id?: string | null
+          display_name?: string
+          id?: string
+          is_default?: boolean
+          last_connected_at?: string | null
+          phone_number?: string | null
+          proxy_url?: string | null
+          qr_code?: string | null
+          status?: string
+          tenant_id?: string
+          token?: string | null
+          use_proxy?: boolean
+          welcome_flow_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channels_closed_flow_id_fkey"
+            columns: ["closed_flow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_flows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channels_default_response_flow_id_fkey"
+            columns: ["default_response_flow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_flows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channels_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channels_welcome_flow_id_fkey"
+            columns: ["welcome_flow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_flows"
             referencedColumns: ["id"]
           },
         ]
@@ -659,13 +753,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "contacts_instance_id_fkey"
-            columns: ["instance_id"]
-            isOneToOne: false
-            referencedRelation: "whatsapp_instances"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "contacts_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -679,11 +766,11 @@ export type Database = {
           ai_agent_id: string | null
           assigned_team_id: string | null
           assigned_user_id: string | null
+          channel_id: string | null
           contact_id: string
           created_at: string
           department_id: string | null
           id: string
-          instance_id: string
           kanban_column_id: string | null
           last_message_at: string | null
           queue_status: string
@@ -693,11 +780,11 @@ export type Database = {
           ai_agent_id?: string | null
           assigned_team_id?: string | null
           assigned_user_id?: string | null
+          channel_id?: string | null
           contact_id: string
           created_at?: string
           department_id?: string | null
           id?: string
-          instance_id: string
           kanban_column_id?: string | null
           last_message_at?: string | null
           queue_status?: string
@@ -707,11 +794,11 @@ export type Database = {
           ai_agent_id?: string | null
           assigned_team_id?: string | null
           assigned_user_id?: string | null
+          channel_id?: string | null
           contact_id?: string
           created_at?: string
           department_id?: string | null
           id?: string
-          instance_id?: string
           kanban_column_id?: string | null
           last_message_at?: string | null
           queue_status?: string
@@ -740,6 +827,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "conversations_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "conversations_contact_id_fkey"
             columns: ["contact_id"]
             isOneToOne: false
@@ -751,13 +845,6 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "conversations_instance_id_fkey"
-            columns: ["instance_id"]
-            isOneToOne: false
-            referencedRelation: "whatsapp_instances"
             referencedColumns: ["id"]
           },
           {
@@ -877,23 +964,36 @@ export type Database = {
       flow_connections: {
         Row: {
           condition_label: string | null
+          flow_id: string | null
           from_node_id: string
+          from_output_key: string | null
           id: string
           to_node_id: string
         }
         Insert: {
           condition_label?: string | null
+          flow_id?: string | null
           from_node_id: string
+          from_output_key?: string | null
           id?: string
           to_node_id: string
         }
         Update: {
           condition_label?: string | null
+          flow_id?: string | null
           from_node_id?: string
+          from_output_key?: string | null
           id?: string
           to_node_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "flow_connections_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_flows"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "flow_connections_from_node_id_fkey"
             columns: ["from_node_id"]
@@ -1295,6 +1395,231 @@ export type Database = {
           },
         ]
       }
+      node_action_configs: {
+        Row: {
+          action_type: string
+          http_body: Json | null
+          http_method: string | null
+          http_url: string | null
+          id: string
+          node_id: string
+          position: number
+          tag_id: string | null
+          target_flow_id: string | null
+          variable_name: string | null
+          variable_value: string | null
+        }
+        Insert: {
+          action_type: string
+          http_body?: Json | null
+          http_method?: string | null
+          http_url?: string | null
+          id?: string
+          node_id: string
+          position?: number
+          tag_id?: string | null
+          target_flow_id?: string | null
+          variable_name?: string | null
+          variable_value?: string | null
+        }
+        Update: {
+          action_type?: string
+          http_body?: Json | null
+          http_method?: string | null
+          http_url?: string | null
+          id?: string
+          node_id?: string
+          position?: number
+          tag_id?: string | null
+          target_flow_id?: string | null
+          variable_name?: string | null
+          variable_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_action_configs_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "flow_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "node_action_configs_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "node_action_configs_target_flow_id_fkey"
+            columns: ["target_flow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      node_content_items: {
+        Row: {
+          contact_name: string | null
+          contact_phone: string | null
+          id: string
+          interval_seconds: number | null
+          item_type: string
+          media_filename: string | null
+          media_url: string | null
+          node_id: string
+          position: number
+          send_as_recorded: boolean | null
+          text_bold: boolean | null
+          text_content: string | null
+          text_italic: boolean | null
+          text_strikethrough: boolean | null
+        }
+        Insert: {
+          contact_name?: string | null
+          contact_phone?: string | null
+          id?: string
+          interval_seconds?: number | null
+          item_type: string
+          media_filename?: string | null
+          media_url?: string | null
+          node_id: string
+          position?: number
+          send_as_recorded?: boolean | null
+          text_bold?: boolean | null
+          text_content?: string | null
+          text_italic?: boolean | null
+          text_strikethrough?: boolean | null
+        }
+        Update: {
+          contact_name?: string | null
+          contact_phone?: string | null
+          id?: string
+          interval_seconds?: number | null
+          item_type?: string
+          media_filename?: string | null
+          media_url?: string | null
+          node_id?: string
+          position?: number
+          send_as_recorded?: boolean | null
+          text_bold?: boolean | null
+          text_content?: string | null
+          text_italic?: boolean | null
+          text_strikethrough?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_content_items_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "flow_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      node_menu_options: {
+        Row: {
+          id: string
+          keyword: string | null
+          label: string
+          node_id: string
+          position: number
+        }
+        Insert: {
+          id?: string
+          keyword?: string | null
+          label: string
+          node_id: string
+          position?: number
+        }
+        Update: {
+          id?: string
+          keyword?: string | null
+          label?: string
+          node_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_menu_options_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "flow_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      node_randomizer_options: {
+        Row: {
+          id: string
+          node_id: string
+          percentage: number
+          position: number
+        }
+        Insert: {
+          id?: string
+          node_id: string
+          percentage?: number
+          position?: number
+        }
+        Update: {
+          id?: string
+          node_id?: string
+          percentage?: number
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_randomizer_options_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "flow_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      node_save_configs: {
+        Row: {
+          accept_media_as_response: boolean
+          id: string
+          max_retry_attempts: number | null
+          message_before_wait: string | null
+          node_id: string
+          save_field_name: string | null
+          wait_time_unit: string
+          wait_time_value: number
+        }
+        Insert: {
+          accept_media_as_response?: boolean
+          id?: string
+          max_retry_attempts?: number | null
+          message_before_wait?: string | null
+          node_id: string
+          save_field_name?: string | null
+          wait_time_unit?: string
+          wait_time_value?: number
+        }
+        Update: {
+          accept_media_as_response?: boolean
+          id?: string
+          max_retry_attempts?: number | null
+          message_before_wait?: string | null
+          node_id?: string
+          save_field_name?: string | null
+          wait_time_unit?: string
+          wait_time_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_save_configs_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: true
+            referencedRelation: "flow_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quick_replies: {
         Row: {
           content: string
@@ -1440,18 +1765,21 @@ export type Database = {
         Row: {
           color: string
           id: string
+          is_custom_color: boolean
           name: string
           tenant_id: string
         }
         Insert: {
           color?: string
           id?: string
+          is_custom_color?: boolean
           name: string
           tenant_id: string
         }
         Update: {
           color?: string
           id?: string
+          is_custom_color?: boolean
           name?: string
           tenant_id?: string
         }
@@ -1619,83 +1947,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "webhooks_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      whatsapp_instances: {
-        Row: {
-          closed_flow_id: string | null
-          connected_at: string | null
-          created_at: string
-          default_response_delay_hours: number
-          default_response_flow_id: string | null
-          display_name: string
-          id: string
-          is_default: boolean
-          phone_number: string | null
-          qr_code: string | null
-          status: string
-          tenant_id: string
-          welcome_flow_id: string | null
-        }
-        Insert: {
-          closed_flow_id?: string | null
-          connected_at?: string | null
-          created_at?: string
-          default_response_delay_hours?: number
-          default_response_flow_id?: string | null
-          display_name: string
-          id?: string
-          is_default?: boolean
-          phone_number?: string | null
-          qr_code?: string | null
-          status?: string
-          tenant_id: string
-          welcome_flow_id?: string | null
-        }
-        Update: {
-          closed_flow_id?: string | null
-          connected_at?: string | null
-          created_at?: string
-          default_response_delay_hours?: number
-          default_response_flow_id?: string | null
-          display_name?: string
-          id?: string
-          is_default?: boolean
-          phone_number?: string | null
-          qr_code?: string | null
-          status?: string
-          tenant_id?: string
-          welcome_flow_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_closed_flow"
-            columns: ["closed_flow_id"]
-            isOneToOne: false
-            referencedRelation: "automation_flows"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_default_resp_flow"
-            columns: ["default_response_flow_id"]
-            isOneToOne: false
-            referencedRelation: "automation_flows"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_welcome_flow"
-            columns: ["welcome_flow_id"]
-            isOneToOne: false
-            referencedRelation: "automation_flows"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "whatsapp_instances_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
