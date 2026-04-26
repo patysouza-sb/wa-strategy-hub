@@ -712,6 +712,27 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
               const isConnectingThis = connecting?.nodeId === node.id;
               const hasError = !!validationErrors[node.id]?.length;
 
+              // Determine which output ports are missing connections (for highlighting)
+              const nodeConns = connections.filter(c => c.from === node.id);
+              const portConnected = (port?: string) =>
+                nodeConns.some(c => (c.fromPort || "") === (port || ""));
+              const terminalSet = new Set(["chat_controller", "department", "flow_connection"]);
+              const optsCount = Array.isArray(node.data?.options) ? node.data!.options.length : 0;
+              const branchesCount = Array.isArray(node.data?.randomizerOptions) ? node.data!.randomizerOptions.length : 0;
+              const missingDefault =
+                !terminalSet.has(node.type) &&
+                node.type !== "save" &&
+                node.type !== "condition" &&
+                ((node.type === "menu" && optsCount > 0 && nodeConns.length < optsCount) ||
+                  (node.type === "randomizer" && branchesCount > 0 && nodeConns.length < branchesCount) ||
+                  (node.type !== "menu" && node.type !== "randomizer" && nodeConns.length === 0));
+              const missingResponded = node.type === "save" && !portConnected("responded");
+              const missingTimeout = node.type === "save" && !portConnected("timeout");
+              const missingExhausted =
+                node.type === "save" && !!node.data?.maxRetryAttempts && !portConnected("exhausted");
+              const missingTrue = node.type === "condition" && !portConnected("true");
+              const missingFalse = node.type === "condition" && !portConnected("false");
+
               return (
                 <div
                   key={node.id}
