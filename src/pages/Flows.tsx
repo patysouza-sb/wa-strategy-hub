@@ -133,7 +133,7 @@ export default function Flows() {
 
   const openCreateInFolder = (folderId: string) => {
     setSelectedFolderId(folderId);
-    setNewFlow({ name: "", shortcut: "", delay: "" });
+    setNewFlow({ name: "", shortcut: "", channelType: "whatsapp" });
     setShowCreate(true);
   };
 
@@ -144,9 +144,10 @@ export default function Flows() {
       tenant_id: DEFAULT_TENANT_ID,
       folder_id: selectedFolderId,
       shortcut: newFlow.shortcut || `/${newFlow.name.toLowerCase().replace(/\s/g, "")}`,
+      channel_type: newFlow.channelType,
       status: "paused",
     } as any);
-    setNewFlow({ name: "", shortcut: "", delay: "" });
+    setNewFlow({ name: "", shortcut: "", channelType: "whatsapp" });
     setShowCreate(false);
     toast.success("Fluxo criado!");
   };
