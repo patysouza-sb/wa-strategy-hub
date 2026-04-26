@@ -180,15 +180,17 @@ export default function Automation() {
           </Card>
         </div>
 
-        {automations.length === 0 ? (
+        {filteredAutomations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Zap className="w-12 h-12 text-muted-foreground/20 mb-4" />
-            <p className="text-sm text-muted-foreground">Nenhuma regra de automação criada</p>
+            <p className="text-sm text-muted-foreground">
+              {automations.length === 0 ? "Nenhuma regra de automação criada" : "Nenhuma regra para o canal selecionado"}
+            </p>
             <p className="text-xs text-muted-foreground mt-1">Clique em "Nova Regra" para automatizar seu atendimento.</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {automations.map(rule => {
+            {filteredAutomations.map(rule => {
               const info = getTriggerInfo(rule.id);
               return (
                 <Card key={rule.id} className="border border-border shadow-none hover:shadow-sm transition-shadow">
