@@ -336,9 +336,22 @@ export default function SettingsPage() {
                   </Select>
                 </div>
               </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Delay de Resposta Padrão (horas)</label>
-                <Input type="number" value={editingConn.default_response_delay_hours} onChange={e => updateConnField(editingConn.id, "default_response_delay_hours", e.target.value)} className="mt-1" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Delay de Resposta Padrão</label>
+                  <Input type="number" value={editingConn.default_response_delay_value} onChange={e => updateConnField(editingConn.id, "default_response_delay_value", e.target.value)} className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Unidade</label>
+                  <Select value={editingConn.default_response_delay_unit} onValueChange={v => updateConnField(editingConn.id, "default_response_delay_unit", v)}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="minutes">Minutos</SelectItem>
+                      <SelectItem value="hours">Horas</SelectItem>
+                      <SelectItem value="days">Dias</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           )}
