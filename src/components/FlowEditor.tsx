@@ -98,7 +98,54 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
     return `${value}${suf}`;
   };
 
-  // Load nodes, connections and per-node detail tables
+  // Validation: returns map of nodeId -> array of error messages
+  const validateNodes = useCallback((nodesToCheck: FlowNode[]): Record<string, string[]> => {
+    const errors: Record<string, string[]> = {};
+    const push = (id: string, msg: string) => {
+      (errors[id] ||= []).push(msg);
+    };
+    for (const n of nodesToCheck) {
+      const d = n.data || {};
+      if (n.type === "content") {
+        const ct = d.contentType || "text";
+        if (ct === "text") {
+          if (!d.message || !String(d.message).trim()) push(n.id, "Mensagem é obrigatória");
+        } else {
+          if (!d.mediaUrl && !d.fileName) push(n.id, "Arquivo de mídia é obrigatório");
+        }
+      }
+      if (n.type === "menu") {
+        if (!Array.isArray(d.options) || d.options.length === 0) {
+          push(n.id, "Adicione ao menos uma opção de menu");
+        } else {
+          d.options.forEach((opt: any, i: number) => {
+            if (!opt?.label || !String(opt.label).trim()) push(n.id, `Opção ${i + 1}: rótulo obrigatório`);
+          });
+        }
+      }
+      if (n.type === "flow_connection") {
+        if (!d.targetFlow || !String(d.targetFlow).trim()) push(n.id, "Selecione o fluxo de destino");
+      }
+      if (n.type === "tag") {
+        if (!d.tagId || !String(d.tagId).trim()) push(n.id, "Selecione uma etiqueta");
+      }
+      if (n.type === "save") {
+        if (!d.message || !String(d.message).trim()) push(n.id, "Mensagem antes da espera é obrigatória");
+      }
+      if (n.type === "remarketing") {
+        if (!d.message || !String(d.message).trim()) push(n.id, "Mensagem do remarketing é obrigatória");
+      }
+      if (n.type === "randomizer") {
+        if (!Array.isArray(d.randomizerOptions) || d.randomizerOptions.length === 0) {
+          push(n.id, "Adicione ao menos uma saída do randomizador");
+        }
+      }
+    }
+    return errors;
+  }, []);
+
+  const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
+
   useEffect(() => {
     if (!flowId) return;
     const load = async () => {
