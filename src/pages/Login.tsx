@@ -37,7 +37,7 @@ export default function Login() {
         toast.success("Bem-vindo de volta!");
         navigate(from, { replace: true });
       } else if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -46,8 +46,19 @@ export default function Login() {
           },
         });
         if (error) throw error;
-        toast.success("Conta criada! Verifique seu e-mail para confirmar.");
-        setMode("signin");
+        toast.success("Conta criada com sucesso!");
+        // Auto-login: se a sessão já vier no signUp, redireciona direto
+        if (data.session) {
+          navigate(from, { replace: true });
+        } else {
+          // Fallback: tenta logar com as credenciais informadas
+          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+          if (signInError) {
+            setMode("signin");
+          } else {
+            navigate(from, { replace: true });
+          }
+        }
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
