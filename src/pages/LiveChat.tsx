@@ -21,6 +21,7 @@ interface Contact {
   stage: string;
   assignedTo: string;
   isBot: boolean;
+  channel: string;
 }
 
 interface Message {
