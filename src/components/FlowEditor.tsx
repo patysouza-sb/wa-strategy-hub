@@ -845,15 +845,24 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
 
                     {/* Connection point */}
                     {node.type !== "save" && (
-                      <div className="flex justify-center pb-2">
+                      <div className="flex justify-center pb-2 gap-1 items-center">
+                        {node.type === "condition" && (missingTrue || missingFalse) && (
+                          <span className="text-[8px] font-semibold text-destructive animate-pulse">
+                            {missingTrue && missingFalse ? "V/F faltando" : missingTrue ? "V faltando" : "F faltando"}
+                          </span>
+                        )}
                         <button
                           className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                            isConnectingThis ? "bg-primary border-primary" : "bg-background border-border hover:border-primary"
+                            isConnectingThis
+                              ? "bg-primary border-primary"
+                              : missingDefault
+                                ? "bg-destructive/15 border-destructive ring-2 ring-destructive/40 animate-pulse"
+                                : "bg-background border-border hover:border-primary"
                           }`}
                           onClick={e => { e.stopPropagation(); startConnection(node.id); }}
-                          title="Conectar"
+                          title={missingDefault ? "Conexão de saída faltando" : "Conectar"}
                         >
-                          <Plus className="w-2.5 h-2.5" />
+                          <Plus className={`w-2.5 h-2.5 ${missingDefault ? "text-destructive" : ""}`} />
                         </button>
                       </div>
                     )}
