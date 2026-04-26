@@ -108,14 +108,32 @@ export default function LiveChat() {
     }, 1000);
   };
 
-  const transferToHuman = (contactId: string) => {
+  const transferToHuman = async (contactId: ContactId) => {
+    if (typeof contactId !== "string" || !contactId) {
+      toast.error("ID de contato inválido");
+      return;
+    }
     setContacts(prev => prev.map(c => c.id === contactId ? { ...c, isBot: false, status: "attending" as Tab, assignedTo: "Patricia" } : c));
-    toast.success("Contato transferido para atendente humano");
+    const { error } = await (supabase as any)
+      .from("conversations")
+      .update({ ai_agent_id: null, queue_status: "attending" })
+      .eq("id", contactId);
+    if (error) toast.error("Erro ao transferir: " + error.message);
+    else toast.success("Contato transferido para atendente humano");
   };
 
-  const resolveChat = (contactId: string) => {
+  const resolveChat = async (contactId: ContactId) => {
+    if (typeof contactId !== "string" || !contactId) {
+      toast.error("ID de contato inválido");
+      return;
+    }
     setContacts(prev => prev.map(c => c.id === contactId ? { ...c, status: "resolved" as Tab } : c));
-    toast.success("Atendimento finalizado");
+    const { error } = await (supabase as any)
+      .from("conversations")
+      .update({ queue_status: "resolved", resolved_at: new Date().toISOString() })
+      .eq("id", contactId);
+    if (error) toast.error("Erro ao finalizar: " + error.message);
+    else toast.success("Atendimento finalizado");
   };
 
   return (
