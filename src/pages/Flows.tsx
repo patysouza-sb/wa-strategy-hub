@@ -166,6 +166,7 @@ export default function Flows() {
       tenant_id: DEFAULT_TENANT_ID,
       folder_id: flow.folder_id,
       shortcut: null,
+      channel_type: flow.channel_type || "whatsapp",
       status: "paused",
     } as any);
     toast.success("Fluxo duplicado!");
