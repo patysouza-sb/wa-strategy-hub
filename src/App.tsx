@@ -33,6 +33,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/plans" element={<PlansExpired />} />
             <Route path="/" element={protect(<Index />)} />
             <Route path="/chat" element={protect(<LiveChat />)} />
             <Route path="/kanban" element={protect(<Kanban />)} />
