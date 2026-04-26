@@ -235,10 +235,19 @@ export default function SettingsPage() {
 
       <Dialog open={showAddConnection} onOpenChange={setShowAddConnection}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Adicionar Número WhatsApp</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Adicionar Canal</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Tipo de Canal</label>
+              <Select value={newConn.channelType} onValueChange={v => setNewConn(p => ({ ...p, channelType: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CHANNEL_TYPES.map(c => (<SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
             <div><label className="text-xs font-medium text-muted-foreground">Nome da Conexão</label><Input value={newConn.name} onChange={e => setNewConn(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Atendimento Principal" className="mt-1" /></div>
-            <div><label className="text-xs font-medium text-muted-foreground">Número do WhatsApp</label><Input value={newConn.phone} onChange={e => setNewConn(p => ({ ...p, phone: e.target.value }))} placeholder="+55 11 99999-0000" className="mt-1" /></div>
+            <div><label className="text-xs font-medium text-muted-foreground">Número / Identificador</label><Input value={newConn.phone} onChange={e => setNewConn(p => ({ ...p, phone: e.target.value }))} placeholder="+55 11 99999-0000" className="mt-1" /></div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Fluxo de Boas-vindas</label>
