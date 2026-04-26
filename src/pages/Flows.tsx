@@ -21,6 +21,7 @@ import { useSupabaseTable } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant";
+import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
 
 interface DbFolder {
   id: string;
@@ -73,6 +74,7 @@ export default function Flows() {
   const [newFolderName, setNewFolderName] = useState("");
   const [initialized, setInitialized] = useState(false);
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
+  const [channelFilter, setChannelFilter] = useState<string>("all");
 
   // Seed default folders if none exist
   useEffect(() => {
@@ -184,7 +186,9 @@ export default function Flows() {
     toast.success("Pasta excluída");
   };
 
-  const getFlowsInFolder = (folderId: string) => flows.filter(f => f.folder_id === folderId);
+  const getFlowsInFolder = (folderId: string) =>
+    flows.filter(f => f.folder_id === folderId)
+      .filter(f => channelFilter === "all" ? true : (f.channel_type || "whatsapp") === channelFilter);
 
   if (foldersLoading || flowsLoading) {
     return (
@@ -204,7 +208,8 @@ export default function Flows() {
             <h1 className="text-2xl font-bold text-foreground">Fluxos de Conversa</h1>
             <p className="text-sm text-muted-foreground">Crie e gerencie seus funis automatizados de WhatsApp</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <ChannelFilter value={channelFilter} onChange={setChannelFilter} />
             <Button variant="outline" onClick={() => setShowCreateFolder(true)} className="gap-2">
               <FolderPlus className="w-4 h-4" /> Nova Pasta
             </Button>
@@ -269,6 +274,9 @@ export default function Flows() {
                                 <div className="flex items-center gap-2">
                                   <GitBranch className="w-4 h-4 text-primary" />
                                   <span className="font-medium text-foreground">{flow.name}</span>
+                                  <Badge variant="outline" className="text-[9px] ml-1">
+                                    {CHANNEL_LABELS[flow.channel_type || "whatsapp"] || flow.channel_type}
+                                  </Badge>
                                 </div>
                               </td>
                               <td className="py-2.5 px-5">

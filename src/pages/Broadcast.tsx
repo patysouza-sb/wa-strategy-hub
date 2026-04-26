@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
 
 interface MediaFile {
   id: number;
@@ -21,6 +22,7 @@ interface BroadcastItem {
   id: number;
   name: string;
   type: string;
+  channelType: string;
   status: "sent" | "scheduled" | "draft";
   sent: number;
   date: string;
@@ -29,8 +31,9 @@ interface BroadcastItem {
 export default function Broadcast() {
   const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [channelFilter, setChannelFilter] = useState<string>("all");
   const [newBroadcast, setNewBroadcast] = useState({
-    name: "", type: "all", tag: "", message: "",
+    name: "", type: "all", channelType: "whatsapp", tag: "", message: "",
     delayMinutes: "1", mediaFiles: [] as MediaFile[],
     includeAudio: false, audioDelayMinutes: "2",
   });
@@ -60,11 +63,12 @@ export default function Broadcast() {
       id: Date.now(),
       name: newBroadcast.name,
       type: newBroadcast.type === "all" ? "Todos contatos" : newBroadcast.type === "list" ? "Lista" : "Etiqueta",
+      channelType: newBroadcast.channelType,
       status: "draft",
       sent: 0,
       date: new Date().toLocaleDateString("pt-BR"),
     }]);
-    setNewBroadcast({ name: "", type: "all", tag: "", message: "", delayMinutes: "1", mediaFiles: [], includeAudio: false, audioDelayMinutes: "2" });
+    setNewBroadcast({ name: "", type: "all", channelType: "whatsapp", tag: "", message: "", delayMinutes: "1", mediaFiles: [], includeAudio: false, audioDelayMinutes: "2" });
     setShowCreate(false);
     toast.success("Transmissão criada com sucesso!");
   };
@@ -77,55 +81,70 @@ export default function Broadcast() {
             <h1 className="text-2xl font-bold text-foreground">Transmissão</h1>
             <p className="text-sm text-muted-foreground">Envie mensagens em massa com mídia, áudios e intervalos configuráveis</p>
           </div>
-          <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
-            <Plus className="w-4 h-4" /> Nova Transmissão
-          </Button>
+          <div className="flex items-center gap-2">
+            <ChannelFilter value={channelFilter} onChange={setChannelFilter} />
+            <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
+              <Plus className="w-4 h-4" /> Nova Transmissão
+            </Button>
+          </div>
         </div>
 
-        {broadcasts.length === 0 ? (
-          <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-center py-16 text-center">
-            <Radio className="w-12 h-12 text-muted-foreground/20 mb-4" />
-            <p className="text-sm text-muted-foreground">Nenhuma transmissão criada</p>
-            <p className="text-xs text-muted-foreground mt-1">Clique em "Nova Transmissão" para enviar mensagens em massa.</p>
-          </div>
-        ) : (
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left py-3 px-5 text-muted-foreground font-medium">Nome</th>
-                  <th className="text-left py-3 px-5 text-muted-foreground font-medium">Tipo</th>
-                  <th className="text-center py-3 px-5 text-muted-foreground font-medium">Status</th>
-                  <th className="text-center py-3 px-5 text-muted-foreground font-medium">Enviados</th>
-                  <th className="text-center py-3 px-5 text-muted-foreground font-medium">Data</th>
-                  <th className="text-right py-3 px-5 text-muted-foreground font-medium">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {broadcasts.map(b => (
-                  <tr key={b.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                    <td className="py-3 px-5 font-medium text-foreground">{b.name}</td>
-                    <td className="py-3 px-5 text-muted-foreground">{b.type}</td>
-                    <td className="py-3 px-5 text-center">
-                      <Badge className={`text-[10px] border-0 ${
-                        b.status === "sent" ? "bg-success/10 text-success"
-                        : b.status === "scheduled" ? "bg-primary/10 text-primary"
-                        : "bg-muted text-muted-foreground"
-                      }`}>
-                        {b.status === "sent" ? "Enviado" : b.status === "scheduled" ? "Agendado" : "Rascunho"}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-5 text-center text-foreground">{b.sent}</td>
-                    <td className="py-3 px-5 text-center text-muted-foreground">{b.date}</td>
-                    <td className="py-3 px-5 text-right">
-                      <Button variant="ghost" size="icon" className="w-7 h-7"><MoreVertical className="w-3.5 h-3.5" /></Button>
-                    </td>
+        {(() => {
+          const filtered = broadcasts.filter(b => channelFilter === "all" || b.channelType === channelFilter);
+          if (filtered.length === 0) {
+            return (
+              <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-center py-16 text-center">
+                <Radio className="w-12 h-12 text-muted-foreground/20 mb-4" />
+                <p className="text-sm text-muted-foreground">
+                  {broadcasts.length === 0 ? "Nenhuma transmissão criada" : "Nenhuma transmissão para o canal selecionado"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Clique em "Nova Transmissão" para enviar mensagens em massa.</p>
+              </div>
+            );
+          }
+          return (
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left py-3 px-5 text-muted-foreground font-medium">Nome</th>
+                    <th className="text-left py-3 px-5 text-muted-foreground font-medium">Canal</th>
+                    <th className="text-left py-3 px-5 text-muted-foreground font-medium">Tipo</th>
+                    <th className="text-center py-3 px-5 text-muted-foreground font-medium">Status</th>
+                    <th className="text-center py-3 px-5 text-muted-foreground font-medium">Enviados</th>
+                    <th className="text-center py-3 px-5 text-muted-foreground font-medium">Data</th>
+                    <th className="text-right py-3 px-5 text-muted-foreground font-medium">Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {filtered.map(b => (
+                    <tr key={b.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                      <td className="py-3 px-5 font-medium text-foreground">{b.name}</td>
+                      <td className="py-3 px-5">
+                        <Badge variant="outline" className="text-[10px]">{CHANNEL_LABELS[b.channelType] || b.channelType}</Badge>
+                      </td>
+                      <td className="py-3 px-5 text-muted-foreground">{b.type}</td>
+                      <td className="py-3 px-5 text-center">
+                        <Badge className={`text-[10px] border-0 ${
+                          b.status === "sent" ? "bg-success/10 text-success"
+                          : b.status === "scheduled" ? "bg-primary/10 text-primary"
+                          : "bg-muted text-muted-foreground"
+                        }`}>
+                          {b.status === "sent" ? "Enviado" : b.status === "scheduled" ? "Agendado" : "Rascunho"}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-5 text-center text-foreground">{b.sent}</td>
+                      <td className="py-3 px-5 text-center text-muted-foreground">{b.date}</td>
+                      <td className="py-3 px-5 text-right">
+                        <Button variant="ghost" size="icon" className="w-7 h-7"><MoreVertical className="w-3.5 h-3.5" /></Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
       </div>
 
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
@@ -137,6 +156,17 @@ export default function Broadcast() {
             <div>
               <label className="text-xs font-medium text-muted-foreground">Nome da Transmissão</label>
               <Input value={newBroadcast.name} onChange={e => setNewBroadcast(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Promoção de Verão" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Canal</label>
+              <Select value={newBroadcast.channelType} onValueChange={v => setNewBroadcast(p => ({ ...p, channelType: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(CHANNEL_LABELS).map(([v, l]) => (
+                    <SelectItem key={v} value={v}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

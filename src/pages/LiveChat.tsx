@@ -4,6 +4,7 @@ import { Search, Phone, Video, MoreVertical, Send, Smile, Paperclip, Mic, Star, 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
 
 type Tab = "attending" | "waiting" | "resolved";
 
@@ -20,6 +21,7 @@ interface Contact {
   stage: string;
   assignedTo: string;
   isBot: boolean;
+  channel: string;
 }
 
 interface Message {
@@ -46,9 +48,11 @@ export default function LiveChat() {
   const [messages, setMessages] = useState<Record<number, Message[]>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [channelFilter, setChannelFilter] = useState<string>("all");
 
   const filteredContacts = contacts
     .filter(c => c.status === activeTab)
+    .filter(c => channelFilter === "all" ? true : (c.channel || "whatsapp") === channelFilter)
     .filter(c => searchTerm ? c.name.toLowerCase().includes(searchTerm.toLowerCase()) : true);
 
   const currentMessages = selectedContact ? (messages[selectedContact.id] || []) : [];
@@ -90,7 +94,7 @@ export default function LiveChat() {
       <div className="flex h-[calc(100vh-8rem)] bg-card rounded-xl border border-border overflow-hidden">
         {/* Left - Contact List */}
         <div className="w-80 border-r border-border flex flex-col">
-          <div className="p-4 border-b border-border">
+          <div className="p-4 border-b border-border space-y-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
@@ -100,6 +104,7 @@ export default function LiveChat() {
                 onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
+            <ChannelFilter value={channelFilter} onChange={setChannelFilter} className="w-full" />
           </div>
           <div className="flex border-b border-border">
             {tabs.map(tab => (
@@ -146,7 +151,12 @@ export default function LiveChat() {
                     <span className="text-sm font-medium text-foreground">{contact.name}</span>
                     <span className="text-[10px] text-muted-foreground">{contact.time}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">{contact.message}</p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <Badge variant="outline" className="text-[8px] py-0 px-1.5 h-3.5">
+                      {CHANNEL_LABELS[contact.channel || "whatsapp"] || contact.channel}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground truncate flex-1">{contact.message}</p>
+                  </div>
                 </div>
                 {contact.unread > 0 && (
                   <span className="w-5 h-5 rounded-full bg-success text-white text-[10px] font-bold flex items-center justify-center shrink-0">

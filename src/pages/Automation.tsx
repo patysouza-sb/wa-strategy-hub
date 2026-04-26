@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useSupabaseTable } from "@/hooks/useSupabaseData";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant";
+import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
 
 interface DbAutomation {
   id: string;
@@ -20,6 +21,7 @@ interface DbAutomation {
   tenant_id: string;
   flow_id: string | null;
   status: string;
+  channel_type?: string;
 }
 
 interface DbTrigger {
@@ -57,7 +59,12 @@ export default function Automation() {
   const AVAILABLE_FLOWS = dbFlows.map(f => f.name);
 
   const [showCreate, setShowCreate] = useState(false);
-  const [newRule, setNewRule] = useState({ name: "", triggerType: "inactivity", action: "send_message", message: "", flowName: "", delay: "", tagValue: "", stageValue: "" });
+  const [channelFilter, setChannelFilter] = useState<string>("all");
+  const [newRule, setNewRule] = useState({ name: "", channelType: "whatsapp", triggerType: "inactivity", action: "send_message", message: "", flowName: "", delay: "", tagValue: "", stageValue: "" });
+
+  const filteredAutomations = automations.filter(a =>
+    channelFilter === "all" ? true : (a.channel_type || "whatsapp") === channelFilter,
+  );
 
   const toggleRule = async (id: string) => {
     const r = automations.find(x => x.id === id);
@@ -77,6 +84,7 @@ export default function Automation() {
     const inserted = await insert({
       name: `${rule.name} (cópia)`,
       tenant_id: DEFAULT_TENANT_ID,
+      channel_type: rule.channel_type || "whatsapp",
       status: "inactive",
     } as any);
     if (inserted) {
@@ -100,6 +108,7 @@ export default function Automation() {
       name: newRule.name,
       tenant_id: DEFAULT_TENANT_ID,
       flow_id: flow?.id || null,
+      channel_type: newRule.channelType,
       status: "inactive",
     } as any);
     if (inserted) {
@@ -115,7 +124,7 @@ export default function Automation() {
         delay_hours: newRule.delay ? parseInt(newRule.delay) || 0 : 0,
       } as any);
     }
-    setNewRule({ name: "", triggerType: "inactivity", action: "send_message", message: "", flowName: "", delay: "", tagValue: "", stageValue: "" });
+    setNewRule({ name: "", channelType: "whatsapp", triggerType: "inactivity", action: "send_message", message: "", flowName: "", delay: "", tagValue: "", stageValue: "" });
     setShowCreate(false);
     toast.success("Regra criada com sucesso!");
   };
@@ -142,9 +151,12 @@ export default function Automation() {
             <h1 className="text-2xl font-bold text-foreground">Automação</h1>
             <p className="text-sm text-muted-foreground">Automatize respostas, crie fluxos inteligentes e atenda dezenas de clientes simultaneamente</p>
           </div>
-          <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
-            <Plus className="w-4 h-4" /> Nova Regra
-          </Button>
+          <div className="flex items-center gap-2">
+            <ChannelFilter value={channelFilter} onChange={setChannelFilter} />
+            <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
+              <Plus className="w-4 h-4" /> Nova Regra
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -168,15 +180,17 @@ export default function Automation() {
           </Card>
         </div>
 
-        {automations.length === 0 ? (
+        {filteredAutomations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Zap className="w-12 h-12 text-muted-foreground/20 mb-4" />
-            <p className="text-sm text-muted-foreground">Nenhuma regra de automação criada</p>
+            <p className="text-sm text-muted-foreground">
+              {automations.length === 0 ? "Nenhuma regra de automação criada" : "Nenhuma regra para o canal selecionado"}
+            </p>
             <p className="text-xs text-muted-foreground mt-1">Clique em "Nova Regra" para automatizar seu atendimento.</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {automations.map(rule => {
+            {filteredAutomations.map(rule => {
               const info = getTriggerInfo(rule.id);
               return (
                 <Card key={rule.id} className="border border-border shadow-none hover:shadow-sm transition-shadow">
@@ -187,7 +201,12 @@ export default function Automation() {
                           <Zap className={`w-4 h-4 ${rule.status === "active" ? "text-success" : "text-muted-foreground"}`} />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">{rule.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-foreground">{rule.name}</p>
+                            <Badge variant="outline" className="text-[9px]">
+                              {CHANNEL_LABELS[rule.channel_type || "whatsapp"] || rule.channel_type}
+                            </Badge>
+                          </div>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <span className="text-xs text-muted-foreground">Gatilho: <strong>{info.type}</strong></span>
                             {info.action && (
@@ -229,6 +248,17 @@ export default function Automation() {
             <div>
               <label className="text-xs font-medium text-muted-foreground">Nome da Regra</label>
               <Input value={newRule.name} onChange={e => setNewRule(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Mensagem de boas-vindas" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Canal</label>
+              <Select value={newRule.channelType} onValueChange={v => setNewRule(p => ({ ...p, channelType: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(CHANNEL_LABELS).map(([v, l]) => (
+                    <SelectItem key={v} value={v}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
