@@ -1,0 +1,2 @@
+ALTER TABLE public.automations ADD COLUMN IF NOT EXISTS channel_type text NOT NULL DEFAULT 'whatsapp';
+ALTER TABLE public.broadcasts ADD COLUMN IF NOT EXISTS channel_type text NOT NULL DEFAULT 'whatsapp';

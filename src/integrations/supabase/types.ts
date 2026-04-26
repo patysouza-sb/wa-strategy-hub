@@ -220,6 +220,7 @@ export type Database = {
       }
       automations: {
         Row: {
+          channel_type: string
           flow_id: string | null
           id: string
           name: string
@@ -227,6 +228,7 @@ export type Database = {
           tenant_id: string
         }
         Insert: {
+          channel_type?: string
           flow_id?: string | null
           id?: string
           name: string
@@ -234,6 +236,7 @@ export type Database = {
           tenant_id: string
         }
         Update: {
+          channel_type?: string
           flow_id?: string | null
           id?: string
           name?: string
@@ -329,6 +332,7 @@ export type Database = {
       broadcasts: {
         Row: {
           channel_id: string | null
+          channel_type: string
           created_at: string
           created_by: string | null
           flow_id: string | null
@@ -341,6 +345,7 @@ export type Database = {
         }
         Insert: {
           channel_id?: string | null
+          channel_type?: string
           created_at?: string
           created_by?: string | null
           flow_id?: string | null
@@ -353,6 +358,7 @@ export type Database = {
         }
         Update: {
           channel_id?: string | null
+          channel_type?: string
           created_at?: string
           created_by?: string | null
           flow_id?: string | null
