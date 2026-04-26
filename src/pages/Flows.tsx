@@ -336,6 +336,15 @@ export default function Flows() {
               </Select>
             </div>
             <div>
+              <label className="text-xs font-medium text-muted-foreground">Canal</label>
+              <Select value={newFlow.channelType} onValueChange={v => setNewFlow(p => ({ ...p, channelType: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CHANNEL_OPTIONS.map(c => (<SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <label className="text-xs font-medium text-muted-foreground">Atalhos</label>
               <Input value={newFlow.shortcut} onChange={e => setNewFlow(p => ({ ...p, shortcut: e.target.value }))} placeholder="Ex: /atendimento1" className="mt-1" />
             </div>
