@@ -48,9 +48,11 @@ export default function LiveChat() {
   const [messages, setMessages] = useState<Record<number, Message[]>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [channelFilter, setChannelFilter] = useState<string>("all");
 
   const filteredContacts = contacts
     .filter(c => c.status === activeTab)
+    .filter(c => channelFilter === "all" ? true : (c.channel || "whatsapp") === channelFilter)
     .filter(c => searchTerm ? c.name.toLowerCase().includes(searchTerm.toLowerCase()) : true);
 
   const currentMessages = selectedContact ? (messages[selectedContact.id] || []) : [];
