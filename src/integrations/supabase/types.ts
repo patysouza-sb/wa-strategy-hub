@@ -1668,6 +1668,51 @@ export type Database = {
           },
         ]
       }
+      plans: {
+        Row: {
+          created_at: string
+          features: Json
+          id: string
+          is_active: boolean
+          kiwify_product_id: string | null
+          max_channels: number | null
+          max_users: number | null
+          name: string
+          price_cents: number
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          features?: Json
+          id?: string
+          is_active?: boolean
+          kiwify_product_id?: string | null
+          max_channels?: number | null
+          max_users?: number | null
+          name: string
+          price_cents: number
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          features?: Json
+          id?: string
+          is_active?: boolean
+          kiwify_product_id?: string | null
+          max_channels?: number | null
+          max_users?: number | null
+          name?: string
+          price_cents?: number
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1798,38 +1843,107 @@ export type Database = {
           },
         ]
       }
+      subscription_events: {
+        Row: {
+          amount_cents: number | null
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json
+          source: string
+          subscription_id: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          amount_cents?: number | null
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json
+          source?: string
+          subscription_id?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          amount_cents?: number | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          source?: string
+          subscription_id?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_events_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
+          blocked_at: string | null
           created_at: string
+          current_period_end: string | null
           expires_at: string | null
           id: string
+          is_trial: boolean
+          kiwify_customer_email: string | null
+          kiwify_order_id: string | null
+          last_payment_at: string | null
           max_ai_agent_tokens: number
           max_whatsapp_instances: number
+          plan_id: string | null
           plan_name: string
           status: string
           tenant_id: string
         }
         Insert: {
+          blocked_at?: string | null
           created_at?: string
+          current_period_end?: string | null
           expires_at?: string | null
           id?: string
+          is_trial?: boolean
+          kiwify_customer_email?: string | null
+          kiwify_order_id?: string | null
+          last_payment_at?: string | null
           max_ai_agent_tokens?: number
           max_whatsapp_instances?: number
+          plan_id?: string | null
           plan_name: string
           status?: string
           tenant_id: string
         }
         Update: {
+          blocked_at?: string | null
           created_at?: string
+          current_period_end?: string | null
           expires_at?: string | null
           id?: string
+          is_trial?: boolean
+          kiwify_customer_email?: string | null
+          kiwify_order_id?: string | null
+          last_payment_at?: string | null
           max_ai_agent_tokens?: number
           max_whatsapp_instances?: number
+          plan_id?: string | null
           plan_name?: string
           status?: string
           tenant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "subscriptions_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -2037,7 +2151,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_user_subscription_active: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
