@@ -249,6 +249,17 @@ export default function Automation() {
               <label className="text-xs font-medium text-muted-foreground">Nome da Regra</label>
               <Input value={newRule.name} onChange={e => setNewRule(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Mensagem de boas-vindas" className="mt-1" />
             </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Canal</label>
+              <Select value={newRule.channelType} onValueChange={v => setNewRule(p => ({ ...p, channelType: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(CHANNEL_LABELS).map(([v, l]) => (
+                    <SelectItem key={v} value={v}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Gatilho</label>
