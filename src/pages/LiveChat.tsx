@@ -70,6 +70,47 @@ export default function LiveChat() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [channelFilter, setChannelFilter] = useState<string>("all");
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [showAudit, setShowAudit] = useState(false);
+
+  const loadAuditLogs = async (conversationId: ContactId) => {
+    const { data, error } = await (supabase as any)
+      .from("conversation_audit_logs")
+      .select("id, conversation_id, action, performed_by_name, notes, created_at")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Erro ao carregar auditoria:", error);
+      return;
+    }
+    setAuditLogs(data || []);
+  };
+
+  const recordAudit = async (conversationId: ContactId, action: string, notes?: string) => {
+    const { data, error } = await (supabase as any)
+      .from("conversation_audit_logs")
+      .insert({
+        conversation_id: conversationId,
+        action,
+        performed_by_user_id: CURRENT_OPERATOR.id,
+        performed_by_name: CURRENT_OPERATOR.name,
+        notes: notes || null,
+      })
+      .select()
+      .single();
+    if (error) {
+      console.error("Falha ao registrar auditoria:", error);
+      return;
+    }
+    if (selectedContact?.id === conversationId) {
+      setAuditLogs(prev => [data, ...prev]);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedContact) loadAuditLogs(selectedContact.id);
+    else setAuditLogs([]);
+  }, [selectedContact?.id]);
 
   useEffect(() => {
     (async () => {
