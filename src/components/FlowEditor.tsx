@@ -780,33 +780,45 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
                             <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                             <span className="text-muted-foreground">Respondeu</span>
                             <button
-                              className="ml-auto w-4 h-4 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center hover:bg-emerald-200"
+                              className={`ml-auto w-4 h-4 rounded-full border flex items-center justify-center ${
+                                missingResponded
+                                  ? "bg-destructive/15 border-destructive ring-2 ring-destructive/40 animate-pulse"
+                                  : "bg-emerald-100 border-emerald-300 hover:bg-emerald-200"
+                              }`}
                               onClick={e => { e.stopPropagation(); startConnection(node.id, "responded"); }}
-                              title="Conectar: Respondeu"
+                              title={missingResponded ? "Conexão faltando: Respondeu" : "Conectar: Respondeu"}
                             >
-                              <Plus className="w-2.5 h-2.5 text-emerald-600" />
+                              <Plus className={`w-2.5 h-2.5 ${missingResponded ? "text-destructive" : "text-emerald-600"}`} />
                             </button>
                           </div>
                           <div className="flex items-center gap-1 text-[9px]">
                             <Timer className="w-3 h-3 text-amber-500" />
                             <span className="text-muted-foreground">Após {node.data?.timeout || "15m"}</span>
                             <button
-                              className="ml-auto w-4 h-4 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center hover:bg-amber-200"
+                              className={`ml-auto w-4 h-4 rounded-full border flex items-center justify-center ${
+                                missingTimeout
+                                  ? "bg-destructive/15 border-destructive ring-2 ring-destructive/40 animate-pulse"
+                                  : "bg-amber-100 border-amber-300 hover:bg-amber-200"
+                              }`}
                               onClick={e => { e.stopPropagation(); startConnection(node.id, "timeout"); }}
-                              title="Conectar: Timeout"
+                              title={missingTimeout ? "Conexão faltando: Timeout" : "Conectar: Timeout"}
                             >
-                              <Plus className="w-2.5 h-2.5 text-amber-600" />
+                              <Plus className={`w-2.5 h-2.5 ${missingTimeout ? "text-destructive" : "text-amber-600"}`} />
                             </button>
                           </div>
                           <div className="flex items-center gap-1 text-[9px]">
                             <XCircle className="w-3 h-3 text-red-500" />
                             <span className="text-muted-foreground">Esgotado</span>
                             <button
-                              className="ml-auto w-4 h-4 rounded-full bg-red-100 border border-red-300 flex items-center justify-center hover:bg-red-200"
+                              className={`ml-auto w-4 h-4 rounded-full border flex items-center justify-center ${
+                                missingExhausted
+                                  ? "bg-destructive/15 border-destructive ring-2 ring-destructive/40 animate-pulse"
+                                  : "bg-red-100 border-red-300 hover:bg-red-200"
+                              }`}
                               onClick={e => { e.stopPropagation(); startConnection(node.id, "exhausted"); }}
-                              title="Conectar: Esgotado"
+                              title={missingExhausted ? "Conexão faltando: Esgotado" : "Conectar: Esgotado"}
                             >
-                              <Plus className="w-2.5 h-2.5 text-red-600" />
+                              <Plus className={`w-2.5 h-2.5 ${missingExhausted ? "text-destructive" : "text-red-600"}`} />
                             </button>
                           </div>
                         </div>
