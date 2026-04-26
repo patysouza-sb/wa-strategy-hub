@@ -92,7 +92,7 @@ export default function Broadcast() {
         </div>
 
         {(() => {
-          const filtered = broadcasts.filter(b => channelFilter === "all" || b.channelType === channelFilter);
+          const filtered = broadcasts.filter(b => channelFilter === "all" || (b.channel_type || "whatsapp") === channelFilter);
           if (filtered.length === 0) {
             return (
               <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-center py-16 text-center">
