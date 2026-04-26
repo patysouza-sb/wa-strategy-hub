@@ -291,7 +291,7 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(async () => {
       // Validate before persisting; if invalid, surface errors and skip save
-      const errs = validateNodes(nodes);
+      const errs = validateNodes(nodes, connections);
       setValidationErrors(errs);
       if (Object.keys(errs).length > 0) return;
       // 1. Wipe existing flow data
