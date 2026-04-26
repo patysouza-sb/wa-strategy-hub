@@ -13,6 +13,8 @@ const WEBHOOK_SECRET = Deno.env.get("KIWIFY_WEBHOOK_SECRET");
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+const GENERIC_ERROR = "Internal server error";
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -34,12 +36,16 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  // Optional shared-secret check (Kiwify lets you append ?secret=... to the webhook URL)
-  if (WEBHOOK_SECRET) {
+  // MANDATORY shared-secret check
+  if (!WEBHOOK_SECRET) {
+    console.error("KIWIFY_WEBHOOK_SECRET is not configured");
+    return json({ error: "Server misconfigured" }, 500);
+  }
+  {
     const url = new URL(req.url);
     const provided = url.searchParams.get("secret") || req.headers.get("x-kiwify-signature");
     if (provided !== WEBHOOK_SECRET) {
-      return json({ error: "Invalid webhook secret" }, 401);
+      return json({ error: "Unauthorized" }, 401);
     }
   }
 
@@ -70,7 +76,10 @@ Deno.serve(async (req) => {
     .eq("email", customerEmail)
     .maybeSingle();
 
-  if (uErr) return json({ error: uErr.message }, 500);
+  if (uErr) {
+    console.error("DB error looking up user:", uErr);
+    return json({ error: GENERIC_ERROR }, 500);
+  }
   if (!userRow?.tenant_id) {
     // Log unmatched webhook for later reconciliation
     await admin.from("subscription_events").insert({

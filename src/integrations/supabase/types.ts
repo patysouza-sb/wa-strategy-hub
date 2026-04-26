@@ -2151,6 +2151,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_tenant_id: { Args: never; Returns: string }
       current_user_subscription_active: { Args: never; Returns: boolean }
     }
     Enums: {
