@@ -274,6 +274,9 @@ export default function Flows() {
                                 <div className="flex items-center gap-2">
                                   <GitBranch className="w-4 h-4 text-primary" />
                                   <span className="font-medium text-foreground">{flow.name}</span>
+                                  <Badge variant="outline" className="text-[9px] ml-1">
+                                    {CHANNEL_LABELS[flow.channel_type || "whatsapp"] || flow.channel_type}
+                                  </Badge>
                                 </div>
                               </td>
                               <td className="py-2.5 px-5">
