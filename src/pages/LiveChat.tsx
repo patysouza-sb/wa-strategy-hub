@@ -49,7 +49,7 @@ export default function LiveChat() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [messageInput, setMessageInput] = useState("");
-  const [messages, setMessages] = useState<Record<string, Message[]>>({});
+  const [messages, setMessages] = useState<Record<ContactId, Message[]>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [channelFilter, setChannelFilter] = useState<string>("all");
