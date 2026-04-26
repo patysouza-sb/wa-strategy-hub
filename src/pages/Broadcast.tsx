@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
 import { useSupabaseTable } from "@/hooks/useSupabaseData";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant";
+import { useTenantId } from "@/lib/tenant";
 
 interface MediaFile {
   id: number;
@@ -66,7 +66,7 @@ export default function Broadcast() {
       type: newBroadcast.type === "all" ? "all" : newBroadcast.type === "list" ? "contact_list" : "tag",
       channel_type: newBroadcast.channelType,
       status: "draft",
-      tenant_id: DEFAULT_TENANT_ID,
+      tenant_id: tenantId,
     } as any);
     if (inserted) {
       setNewBroadcast({ name: "", type: "all", channelType: "whatsapp", tag: "", message: "", delayMinutes: "1", mediaFiles: [], includeAudio: false, audioDelayMinutes: "2" });

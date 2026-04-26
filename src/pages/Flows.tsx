@@ -20,7 +20,7 @@ import FlowEditor from "@/components/FlowEditor";
 import { useSupabaseTable } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant";
+import { useTenantId } from "@/lib/tenant";
 import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
 
 interface DbFolder {
@@ -84,7 +84,7 @@ export default function Flows() {
         for (let i = 0; i < DEFAULT_FOLDER_NAMES.length; i++) {
           await (supabase as any).from("flow_folders").insert({
             name: DEFAULT_FOLDER_NAMES[i],
-            tenant_id: DEFAULT_TENANT_ID,
+            tenant_id: tenantId,
           });
         }
         await fetchFolders();
@@ -143,7 +143,7 @@ export default function Flows() {
     if (!newFlow.name) return;
     await insertFlow({
       name: newFlow.name,
-      tenant_id: DEFAULT_TENANT_ID,
+      tenant_id: tenantId,
       folder_id: selectedFolderId,
       shortcut: newFlow.shortcut || `/${newFlow.name.toLowerCase().replace(/\s/g, "")}`,
       channel_type: newFlow.channelType,
@@ -156,7 +156,7 @@ export default function Flows() {
 
   const createFolder = async () => {
     if (!newFolderName.trim()) return;
-    await insertFolder({ name: newFolderName.trim(), tenant_id: DEFAULT_TENANT_ID } as any);
+    await insertFolder({ name: newFolderName.trim(), tenant_id: tenantId } as any);
     setNewFolderName("");
     setShowCreateFolder(false);
     toast.success("Pasta criada!");
@@ -165,7 +165,7 @@ export default function Flows() {
   const duplicateFlow = async (flow: DbFlow) => {
     await insertFlow({
       name: `${flow.name} (cópia)`,
-      tenant_id: DEFAULT_TENANT_ID,
+      tenant_id: tenantId,
       folder_id: flow.folder_id,
       shortcut: null,
       channel_type: flow.channel_type || "whatsapp",

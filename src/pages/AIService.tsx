@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useSupabaseTable } from "@/hooks/useSupabaseData";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant";
+import { useTenantId } from "@/lib/tenant";
 
 interface DbAgent {
   id: string;
@@ -61,7 +61,7 @@ export default function AIService() {
     const name = (document.getElementById("new-bot-name") as HTMLInputElement)?.value;
     if (!name) return;
     const inserted = await insert({
-      name, tenant_id: DEFAULT_TENANT_ID, model: "gpt-4o-mini",
+      name, tenant_id: tenantId, model: "gpt-4o-mini",
       tokens_used: 0, status: "inactive",
     } as any);
     if (inserted) {
@@ -88,7 +88,7 @@ export default function AIService() {
   const importAsAgent = async () => {
     if (!importScript || !importName) return;
     const inserted = await insert({
-      name: importName, tenant_id: DEFAULT_TENANT_ID, model: "gpt-4o-mini",
+      name: importName, tenant_id: tenantId, model: "gpt-4o-mini",
       tokens_used: 0, status: "inactive",
     } as any);
     if (inserted) {

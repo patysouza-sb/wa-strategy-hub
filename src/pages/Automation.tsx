@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useSupabaseTable } from "@/hooks/useSupabaseData";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant";
+import { useTenantId } from "@/lib/tenant";
 import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
 
 interface DbAutomation {
@@ -83,7 +83,7 @@ export default function Automation() {
     if (!rule) return;
     const inserted = await insert({
       name: `${rule.name} (cópia)`,
-      tenant_id: DEFAULT_TENANT_ID,
+      tenant_id: tenantId,
       channel_type: rule.channel_type || "whatsapp",
       status: "inactive",
     } as any);
@@ -106,7 +106,7 @@ export default function Automation() {
     const flow = dbFlows.find(f => f.name === newRule.flowName);
     const inserted = await insert({
       name: newRule.name,
-      tenant_id: DEFAULT_TENANT_ID,
+      tenant_id: tenantId,
       flow_id: flow?.id || null,
       channel_type: newRule.channelType,
       status: "inactive",

@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useSupabaseTable } from "@/hooks/useSupabaseData";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant";
+import { useTenantId } from "@/lib/tenant";
 
 interface DbChannel {
   id: string;
@@ -76,7 +76,7 @@ export default function SettingsPage() {
 
   const confirmQRConnection = async () => {
     await insert({
-      tenant_id: DEFAULT_TENANT_ID,
+      tenant_id: tenantId,
       channel_type: newConn.channelType,
       display_name: newConn.name,
       phone_number: newConn.phone,
