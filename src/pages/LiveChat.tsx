@@ -34,6 +34,15 @@ interface Message {
   status?: "sent" | "delivered" | "read";
 }
 
+interface AuditLog {
+  id: string;
+  conversation_id: string | null;
+  action: string;
+  performed_by_name: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
 const QUICK_REPLIES = [
   "Olá! Como posso ajudar?",
   "Vou verificar e retorno em instantes",
@@ -41,6 +50,14 @@ const QUICK_REPLIES = [
   "Segue o link para pagamento:",
   "Seu pedido está em processamento",
 ];
+
+const ACTION_LABELS: Record<string, string> = {
+  transfer_to_human: "Transferiu para humano",
+  resolve: "Finalizou atendimento",
+};
+
+// Identificação do operador atual (placeholder até auth completa)
+const CURRENT_OPERATOR = { id: null as string | null, name: "Patricia" };
 
 const queueToTab = (q: string): Tab => q === "resolved" ? "resolved" : q === "attending" ? "attending" : "waiting";
 
