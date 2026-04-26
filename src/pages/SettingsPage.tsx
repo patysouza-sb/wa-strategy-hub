@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { Phone, Plus, Trash2, Wifi, WifiOff, QrCode, RefreshCw } from "lucide-react";
+import { Phone, Plus, Trash2, Wifi, WifiOff, QrCode, RefreshCw, MessageCircle, Instagram, Mail, Globe } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,10 @@ import { toast } from "sonner";
 import { useSupabaseTable } from "@/hooks/useSupabaseData";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 
-interface DbInstance {
+interface DbChannel {
   id: string;
   tenant_id: string;
+  channel_type: string;
   display_name: string;
   phone_number: string | null;
   status: string;
@@ -23,21 +24,31 @@ interface DbInstance {
   welcome_flow_id: string | null;
   default_response_flow_id: string | null;
   closed_flow_id: string | null;
-  default_response_delay_hours: number;
+  default_response_delay_value: number;
+  default_response_delay_unit: string;
   qr_code: string | null;
-  connected_at: string | null;
+  last_connected_at: string | null;
   created_at: string;
 }
 
+const CHANNEL_TYPES: { value: string; label: string; icon: any }[] = [
+  { value: "whatsapp", label: "WhatsApp", icon: MessageCircle },
+  { value: "whatsapp_official", label: "WhatsApp Oficial", icon: MessageCircle },
+  { value: "instagram", label: "Instagram", icon: Instagram },
+  { value: "messenger", label: "Messenger", icon: MessageCircle },
+  { value: "email", label: "E-mail", icon: Mail },
+  { value: "widget", label: "Widget Web", icon: Globe },
+];
+
 export default function SettingsPage() {
-  const { data: instances, loading, insert, update, remove } = useSupabaseTable<DbInstance>("whatsapp_instances");
+  const { data: instances, loading, insert, update, remove } = useSupabaseTable<DbChannel>("channels");
   const { data: dbFlows } = useSupabaseTable<{ id: string; name: string }>("automation_flows", "name");
   const [showAddConnection, setShowAddConnection] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [qrExpired, setQrExpired] = useState(false);
   const [qrTimer, setQrTimer] = useState(60);
-  const [newConn, setNewConn] = useState({ name: "", phone: "", welcomeFlowId: "", defaultFlowId: "", closedFlowId: "" });
-  const [editingConn, setEditingConn] = useState<DbInstance | null>(null);
+  const [newConn, setNewConn] = useState({ name: "", phone: "", channelType: "whatsapp", welcomeFlowId: "", defaultFlowId: "", closedFlowId: "" });
+  const [editingConn, setEditingConn] = useState<DbChannel | null>(null);
 
   useEffect(() => {
     if (!showQRCode || qrExpired) return;
