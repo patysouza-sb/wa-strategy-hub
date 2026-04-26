@@ -80,96 +80,223 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
   ]);
   const [connections, setConnections] = useState<FlowConnection[]>([]);
 
-  // Load nodes and connections from DB tables
+  // Helpers to convert delay strings <-> (value, unit)
+  const parseDelay = (s?: string): { value: number; unit: string } => {
+    if (!s) return { value: 15, unit: "minutes" };
+    const m = s.match(/^(\d+)\s*(s|m|h|d)$/i);
+    if (!m) return { value: 15, unit: "minutes" };
+    const v = parseInt(m[1], 10);
+    const u = m[2].toLowerCase();
+    return { value: v, unit: u === "s" ? "seconds" : u === "m" ? "minutes" : u === "h" ? "hours" : "days" };
+  };
+  const formatDelay = (value?: number | null, unit?: string | null): string => {
+    if (!value) return "15m";
+    const u = (unit || "minutes").toLowerCase();
+    const suf = u.startsWith("sec") ? "s" : u.startsWith("min") ? "m" : u.startsWith("hou") ? "h" : "d";
+    return `${value}${suf}`;
+  };
+
+  // Load nodes, connections and per-node detail tables
   useEffect(() => {
     if (!flowId) return;
     const load = async () => {
-      // Load flow_nodes
       const { data: dbNodes } = await (supabase as any)
         .from("flow_nodes")
         .select("*")
         .eq("flow_id", flowId);
 
-      if (dbNodes && dbNodes.length > 0) {
-        const mapped: FlowNode[] = dbNodes.map((n: any) => ({
+      if (!dbNodes || dbNodes.length === 0) return;
+
+      const nodeIds = dbNodes.map((n: any) => n.id);
+
+      const [contentRes, menuRes, saveRes, actionRes, randRes, connRes] = await Promise.all([
+        (supabase as any).from("node_content_items").select("*").in("node_id", nodeIds).order("position", { ascending: true }),
+        (supabase as any).from("node_menu_options").select("*").in("node_id", nodeIds).order("position", { ascending: true }),
+        (supabase as any).from("node_save_configs").select("*").in("node_id", nodeIds),
+        (supabase as any).from("node_action_configs").select("*").in("node_id", nodeIds).order("position", { ascending: true }),
+        (supabase as any).from("node_randomizer_options").select("*").in("node_id", nodeIds).order("position", { ascending: true }),
+        (supabase as any).from("flow_connections").select("*").eq("flow_id", flowId),
+      ]);
+
+      const contentByNode: Record<string, any[]> = {};
+      (contentRes.data || []).forEach((r: any) => { (contentByNode[r.node_id] ||= []).push(r); });
+      const menuByNode: Record<string, any[]> = {};
+      (menuRes.data || []).forEach((r: any) => { (menuByNode[r.node_id] ||= []).push(r); });
+      const saveByNode: Record<string, any> = {};
+      (saveRes.data || []).forEach((r: any) => { saveByNode[r.node_id] = r; });
+      const actionByNode: Record<string, any[]> = {};
+      (actionRes.data || []).forEach((r: any) => { (actionByNode[r.node_id] ||= []).push(r); });
+      const randByNode: Record<string, any[]> = {};
+      (randRes.data || []).forEach((r: any) => { (randByNode[r.node_id] ||= []).push(r); });
+
+      const mapped: FlowNode[] = dbNodes.map((n: any) => {
+        const data: Record<string, any> = {};
+        const firstContent = (contentByNode[n.id] || [])[0];
+        if (firstContent) {
+          data.contentType = firstContent.item_type || "text";
+          data.message = firstContent.text_content || "";
+          data.fileName = firstContent.media_filename || "";
+          data.mediaUrl = firstContent.media_url || "";
+        }
+        if (menuByNode[n.id]) {
+          data.options = menuByNode[n.id].map((o: any) => ({ label: o.label, keyword: o.keyword }));
+        }
+        if (saveByNode[n.id]) {
+          const s = saveByNode[n.id];
+          data.timeout = formatDelay(s.wait_time_value, s.wait_time_unit);
+          data.maxRetries = String(s.max_retry_attempts ?? 3);
+          data.waitForResponse = true;
+          data.message = s.message_before_wait || data.message || "";
+          data.saveFieldName = s.save_field_name || "";
+        }
+        if (actionByNode[n.id]) {
+          const acts = actionByNode[n.id];
+          const flowAct = acts.find((a: any) => a.action_type === "go_to_flow");
+          if (flowAct) data.targetFlow = flowAct.target_flow_id || "";
+          const tagAct = acts.find((a: any) => a.action_type === "add_tag");
+          if (tagAct) data.tagId = tagAct.tag_id || "";
+        }
+        if (randByNode[n.id]) {
+          data.randomizerOptions = randByNode[n.id].map((r: any) => ({ percentage: r.percentage }));
+        }
+
+        return {
           id: n.id,
           type: n.type,
           label: n.config?.label || BLOCK_TYPES.find(b => b.type === n.type)?.label || n.type,
           x: n.pos_x,
           y: n.pos_y,
           color: n.config?.color || "bg-gray-500",
-          data: n.config?.data || {},
-        }));
-        setNodes(mapped);
-      }
+          data,
+        };
+      });
+      setNodes(mapped);
 
-      // Load flow_connections
-      const { data: dbConns } = await (supabase as any)
-        .from("flow_connections")
-        .select("*");
-
-      if (dbConns) {
-        // Filter connections belonging to this flow's nodes
-        const nodeIds = new Set((dbNodes || []).map((n: any) => n.id));
-        const mapped: FlowConnection[] = dbConns
-          .filter((c: any) => nodeIds.has(c.from_node_id))
-          .map((c: any) => ({
-            id: c.id,
-            from: c.from_node_id,
-            to: c.to_node_id,
-            label: c.condition_label || "",
-          }));
-        setConnections(mapped);
-      }
+      const conns: FlowConnection[] = (connRes.data || []).map((c: any) => ({
+        id: c.id,
+        from: c.from_node_id,
+        to: c.to_node_id,
+        fromPort: c.from_output_key || undefined,
+        label: c.condition_label || c.from_output_key || "",
+      }));
+      setConnections(conns);
     };
     load();
   }, [flowId]);
 
-  // Auto-save to DB
+  // Auto-save to DB — persist node details into dedicated tables
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!flowId) return;
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(async () => {
-      // Delete existing nodes and connections, re-insert
-      // First get existing node IDs to delete their connections
+      // 1. Wipe existing flow data
       const { data: existingNodes } = await (supabase as any)
         .from("flow_nodes")
         .select("id")
         .eq("flow_id", flowId);
 
-      if (existingNodes && existingNodes.length > 0) {
-        const nodeIds = existingNodes.map((n: any) => n.id);
-        await (supabase as any)
-          .from("flow_connections")
-          .delete()
-          .in("from_node_id", nodeIds);
+      const existingIds = (existingNodes || []).map((n: any) => n.id);
+      if (existingIds.length > 0) {
+        await Promise.all([
+          (supabase as any).from("node_content_items").delete().in("node_id", existingIds),
+          (supabase as any).from("node_menu_options").delete().in("node_id", existingIds),
+          (supabase as any).from("node_save_configs").delete().in("node_id", existingIds),
+          (supabase as any).from("node_action_configs").delete().in("node_id", existingIds),
+          (supabase as any).from("node_randomizer_options").delete().in("node_id", existingIds),
+        ]);
+      }
+      await (supabase as any).from("flow_connections").delete().eq("flow_id", flowId);
+      await (supabase as any).from("flow_nodes").delete().eq("flow_id", flowId);
+
+      if (nodes.length === 0) return;
+
+      // 2. Insert nodes (config keeps only label + color now)
+      const dbNodes = nodes.map(n => ({
+        id: n.id,
+        flow_id: flowId,
+        type: n.type,
+        pos_x: Math.round(n.x),
+        pos_y: Math.round(n.y),
+        config: { label: n.label, color: n.color },
+      }));
+      await (supabase as any).from("flow_nodes").insert(dbNodes);
+
+      // 3. Build per-table batches
+      const contentRows: any[] = [];
+      const menuRows: any[] = [];
+      const saveRows: any[] = [];
+      const actionRows: any[] = [];
+      const randRows: any[] = [];
+
+      for (const n of nodes) {
+        const d = n.data || {};
+        if (n.type === "content" || (d.message && !["save", "menu", "randomizer", "flow_connection"].includes(n.type))) {
+          contentRows.push({
+            node_id: n.id,
+            position: 0,
+            item_type: d.contentType || "text",
+            text_content: d.message || null,
+            media_url: d.mediaUrl || null,
+            media_filename: d.fileName || null,
+          });
+        }
+        if (n.type === "menu" && Array.isArray(d.options)) {
+          d.options.forEach((opt: any, i: number) => {
+            menuRows.push({ node_id: n.id, position: i, label: opt.label || `Opção ${i + 1}`, keyword: opt.keyword || null });
+          });
+        }
+        if (n.type === "save") {
+          const { value, unit } = parseDelay(d.timeout);
+          saveRows.push({
+            node_id: n.id,
+            wait_time_value: value,
+            wait_time_unit: unit,
+            max_retry_attempts: d.maxRetries ? parseInt(d.maxRetries, 10) : 3,
+            message_before_wait: d.message || null,
+            save_field_name: d.saveFieldName || null,
+            accept_media_as_response: !!d.acceptMedia,
+          });
+        }
+        if (n.type === "flow_connection" && d.targetFlow) {
+          actionRows.push({
+            node_id: n.id,
+            position: 0,
+            action_type: "go_to_flow",
+            target_flow_id: d.targetFlow,
+          });
+        }
+        if (n.type === "tag" && d.tagId) {
+          actionRows.push({
+            node_id: n.id,
+            position: 0,
+            action_type: "add_tag",
+            tag_id: d.tagId,
+          });
+        }
+        if (n.type === "randomizer" && Array.isArray(d.randomizerOptions)) {
+          d.randomizerOptions.forEach((opt: any, i: number) => {
+            randRows.push({ node_id: n.id, position: i, percentage: opt.percentage ?? 50 });
+          });
+        }
       }
 
-      await (supabase as any)
-        .from("flow_nodes")
-        .delete()
-        .eq("flow_id", flowId);
+      await Promise.all([
+        contentRows.length ? (supabase as any).from("node_content_items").insert(contentRows) : null,
+        menuRows.length ? (supabase as any).from("node_menu_options").insert(menuRows) : null,
+        saveRows.length ? (supabase as any).from("node_save_configs").insert(saveRows) : null,
+        actionRows.length ? (supabase as any).from("node_action_configs").insert(actionRows) : null,
+        randRows.length ? (supabase as any).from("node_randomizer_options").insert(randRows) : null,
+      ]);
 
-      // Insert current nodes
-      if (nodes.length > 0) {
-        const dbNodes = nodes.map(n => ({
-          id: n.id,
-          flow_id: flowId,
-          type: n.type,
-          pos_x: Math.round(n.x),
-          pos_y: Math.round(n.y),
-          config: { label: n.label, color: n.color, data: n.data || {} },
-        }));
-        await (supabase as any).from("flow_nodes").insert(dbNodes);
-      }
-
-      // Insert current connections
+      // 4. Insert connections (with flow_id + from_output_key)
       if (connections.length > 0) {
         const dbConns = connections.map(c => ({
           id: c.id,
+          flow_id: flowId,
           from_node_id: c.from,
           to_node_id: c.to,
+          from_output_key: c.fromPort || null,
           condition_label: c.label || null,
         }));
         await (supabase as any).from("flow_connections").insert(dbConns);
