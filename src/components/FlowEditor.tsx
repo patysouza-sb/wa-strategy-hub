@@ -357,7 +357,7 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
       }
     }, 2000);
     return () => { if (saveTimeout.current) clearTimeout(saveTimeout.current); };
-  }, [nodes, connections, flowId]);
+  }, [nodes, connections, flowId, validateNodes]);
 
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
