@@ -31,6 +31,7 @@ interface BroadcastRow {
 }
 
 export default function Broadcast() {
+  const tenantId = useTenantId();
   const { data: broadcasts, insert } = useSupabaseTable<BroadcastRow>("broadcasts", "created_at");
   const [showCreate, setShowCreate] = useState(false);
   const [channelFilter, setChannelFilter] = useState<string>("all");

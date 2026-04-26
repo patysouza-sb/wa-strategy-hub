@@ -36,6 +36,7 @@ interface DbAgentConfig {
 }
 
 export default function AIService() {
+  const tenantId = useTenantId();
   const { data: agents, loading, insert, update, remove } = useSupabaseTable<DbAgent>("ai_agents");
   const { data: configs, insert: insertConfig, update: updateConfig } = useSupabaseTable<DbAgentConfig>("ai_agent_configs");
   const { data: dbFlows } = useSupabaseTable<{ id: string; name: string }>("automation_flows", "name");

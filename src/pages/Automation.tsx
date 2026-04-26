@@ -53,6 +53,7 @@ const ACTION_TYPES = [
 const KANBAN_STAGES = ["Novo contato", "Interessado", "Proposta", "Negociação", "Fechamento", "Pago"];
 
 export default function Automation() {
+  const tenantId = useTenantId();
   const { data: automations, loading, insert, update, remove } = useSupabaseTable<DbAutomation>("automations");
   const { data: triggers, insert: insertTrigger } = useSupabaseTable<DbTrigger>("automation_triggers");
   const { data: dbFlows } = useSupabaseTable<{ id: string; name: string }>("automation_flows", "name");

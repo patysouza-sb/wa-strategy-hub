@@ -63,6 +63,7 @@ const DEFAULT_FOLDER_NAMES = [
 ];
 
 export default function Flows() {
+  const tenantId = useTenantId();
   const { data: folders, loading: foldersLoading, insert: insertFolder, update: updateFolder, remove: removeFolder, fetch: fetchFolders } = useSupabaseTable<DbFolder>("flow_folders", "name");
   const { data: flows, loading: flowsLoading, insert: insertFlow, update: updateFlow, remove: removeFlow, fetch: fetchFlows } = useSupabaseTable<DbFlow>("automation_flows", "created_at");
 

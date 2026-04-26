@@ -41,6 +41,7 @@ const CHANNEL_TYPES: { value: string; label: string; icon: any }[] = [
 ];
 
 export default function SettingsPage() {
+  const tenantId = useTenantId();
   const { data: instances, loading, insert, update, remove } = useSupabaseTable<DbChannel>("channels");
   const { data: dbFlows } = useSupabaseTable<{ id: string; name: string }>("automation_flows", "name");
   const [showAddConnection, setShowAddConnection] = useState(false);
