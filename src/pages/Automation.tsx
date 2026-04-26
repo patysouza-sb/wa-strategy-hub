@@ -108,6 +108,7 @@ export default function Automation() {
       name: newRule.name,
       tenant_id: DEFAULT_TENANT_ID,
       flow_id: flow?.id || null,
+      channel_type: newRule.channelType,
       status: "inactive",
     } as any);
     if (inserted) {
