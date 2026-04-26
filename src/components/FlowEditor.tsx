@@ -760,6 +760,16 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
                 <X className="w-3.5 h-3.5" />
               </Button>
             </div>
+            {validationErrors[selectedNodeData.id]?.length > 0 && (
+              <Alert variant="destructive" className="py-2">
+                <AlertCircle className="w-3.5 h-3.5" />
+                <AlertDescription className="text-[10px] space-y-0.5">
+                  {validationErrors[selectedNodeData.id].map((err, i) => (
+                    <div key={i}>• {err}</div>
+                  ))}
+                </AlertDescription>
+              </Alert>
+            )}
             <div>
               <label className="text-[10px] font-medium text-muted-foreground">Rótulo</label>
               <Input
