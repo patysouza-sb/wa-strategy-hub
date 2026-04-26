@@ -171,13 +171,17 @@ export default function LiveChat() {
       toast.error("ID de contato inválido");
       return;
     }
-    setContacts(prev => prev.map(c => c.id === contactId ? { ...c, isBot: false, status: "attending" as Tab, assignedTo: "Patricia" } : c));
+    setContacts(prev => prev.map(c => c.id === contactId ? { ...c, isBot: false, status: "attending" as Tab, assignedTo: CURRENT_OPERATOR.name } : c));
     const { error } = await (supabase as any)
       .from("conversations")
       .update({ ai_agent_id: null, queue_status: "attending" })
       .eq("id", contactId);
-    if (error) toast.error("Erro ao transferir: " + error.message);
-    else toast.success("Contato transferido para atendente humano");
+    if (error) {
+      toast.error("Erro ao transferir: " + error.message);
+      return;
+    }
+    await recordAudit(contactId, "transfer_to_human", `Transferido para ${CURRENT_OPERATOR.name}`);
+    toast.success("Contato transferido para atendente humano");
   };
 
   const resolveChat = async (contactId: ContactId) => {
@@ -190,8 +194,12 @@ export default function LiveChat() {
       .from("conversations")
       .update({ queue_status: "resolved", resolved_at: new Date().toISOString() })
       .eq("id", contactId);
-    if (error) toast.error("Erro ao finalizar: " + error.message);
-    else toast.success("Atendimento finalizado");
+    if (error) {
+      toast.error("Erro ao finalizar: " + error.message);
+      return;
+    }
+    await recordAudit(contactId, "resolve", "Atendimento marcado como resolvido");
+    toast.success("Atendimento finalizado");
   };
 
   return (
