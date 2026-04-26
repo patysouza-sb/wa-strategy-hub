@@ -156,6 +156,41 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
           push(n.id, "Adicione ao menos uma saída do randomizador");
         }
       }
+
+      // ===== Connection validations (expected outputs without a wired link) =====
+      const terminalTypes = new Set(["chat_controller", "department", "flow_connection"]);
+
+      if (n.type === "menu") {
+        if (Array.isArray(d.options)) {
+          d.options.forEach((opt: any, i: number) => {
+            const port = `option_${i}`;
+            if (!hasOut(n.id, port) && !hasOut(n.id, String(i))) {
+              const label = opt?.label ? `"${opt.label}"` : `${i + 1}`;
+              push(n.id, `Opção ${label} sem conexão de saída`);
+            }
+          });
+        }
+      } else if (n.type === "randomizer") {
+        if (Array.isArray(d.randomizerOptions)) {
+          d.randomizerOptions.forEach((_: any, i: number) => {
+            const port = `random_${i}`;
+            if (!hasOut(n.id, port) && !hasOut(n.id, String(i))) {
+              push(n.id, `Saída ${i + 1} do randomizador sem conexão`);
+            }
+          });
+        }
+      } else if (n.type === "condition") {
+        if (!hasOut(n.id, "true")) push(n.id, 'Saída "Verdadeiro" sem conexão');
+        if (!hasOut(n.id, "false")) push(n.id, 'Saída "Falso" sem conexão');
+      } else if (n.type === "save") {
+        if (!hasOut(n.id, "responded")) push(n.id, 'Saída "Respondeu" sem conexão');
+        if (!hasOut(n.id, "timeout")) push(n.id, 'Saída "Timeout" sem conexão');
+        if (d.maxRetryAttempts && !hasOut(n.id, "exhausted")) {
+          push(n.id, 'Saída "Tentativas esgotadas" sem conexão');
+        }
+      } else if (!terminalTypes.has(n.type)) {
+        if (!hasOut(n.id)) push(n.id, "Bloco sem conexão de saída");
+      }
     }
     return errors;
   }, []);
