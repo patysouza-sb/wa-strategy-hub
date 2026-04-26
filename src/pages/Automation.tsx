@@ -122,7 +122,7 @@ export default function Automation() {
         delay_hours: newRule.delay ? parseInt(newRule.delay) || 0 : 0,
       } as any);
     }
-    setNewRule({ name: "", triggerType: "inactivity", action: "send_message", message: "", flowName: "", delay: "", tagValue: "", stageValue: "" });
+    setNewRule({ name: "", channelType: "whatsapp", triggerType: "inactivity", action: "send_message", message: "", flowName: "", delay: "", tagValue: "", stageValue: "" });
     setShowCreate(false);
     toast.success("Regra criada com sucesso!");
   };
