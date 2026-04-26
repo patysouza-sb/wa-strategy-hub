@@ -624,6 +624,7 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
               const Icon = bt.icon;
               const isSelected = selectedNode === node.id;
               const isConnectingThis = connecting?.nodeId === node.id;
+              const hasError = !!validationErrors[node.id]?.length;
 
               return (
                 <div
@@ -634,8 +635,14 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
                   onClick={e => e.stopPropagation()}
                 >
                   <div className={`min-w-[200px] bg-card rounded-xl shadow-md border-2 transition-all ${
+                    hasError ? "border-destructive shadow-lg" :
                     isSelected ? "border-primary shadow-lg" : isConnectingThis ? "border-blue-400" : "border-transparent hover:border-border"
                   }`}>
+                    {hasError && (
+                      <div className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center shadow-md z-10" title={validationErrors[node.id].join("\n")}>
+                        <AlertCircle className="w-3 h-3" />
+                      </div>
+                    )}
                     {/* Header */}
                     <div className={`flex items-center gap-2 px-3 py-2 rounded-t-[10px] ${bt.color} text-white`}>
                       <Icon className="w-3.5 h-3.5" />
