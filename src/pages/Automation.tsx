@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useSupabaseTable } from "@/hooks/useSupabaseData";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant";
+import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
 
 interface DbAutomation {
   id: string;
@@ -20,6 +21,7 @@ interface DbAutomation {
   tenant_id: string;
   flow_id: string | null;
   status: string;
+  channel_type?: string;
 }
 
 interface DbTrigger {
