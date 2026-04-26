@@ -94,7 +94,7 @@ export default function LiveChat() {
       <div className="flex h-[calc(100vh-8rem)] bg-card rounded-xl border border-border overflow-hidden">
         {/* Left - Contact List */}
         <div className="w-80 border-r border-border flex flex-col">
-          <div className="p-4 border-b border-border">
+          <div className="p-4 border-b border-border space-y-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
@@ -104,6 +104,7 @@ export default function LiveChat() {
                 onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
+            <ChannelFilter value={channelFilter} onChange={setChannelFilter} className="w-full" />
           </div>
           <div className="flex border-b border-border">
             {tabs.map(tab => (
