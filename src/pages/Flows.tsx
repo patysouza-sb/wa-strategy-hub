@@ -38,9 +38,19 @@ interface DbFlow {
   folder_id: string | null;
   shortcut: string | null;
   status: string;
+  channel_type: string;
   created_by: string | null;
   created_at: string;
 }
+
+const CHANNEL_OPTIONS = [
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "whatsapp_official", label: "WhatsApp Oficial" },
+  { value: "instagram", label: "Instagram" },
+  { value: "messenger", label: "Messenger" },
+  { value: "email", label: "E-mail" },
+  { value: "widget", label: "Widget Web" },
+];
 
 const DEFAULT_FOLDER_NAMES = [
   "ATENDIMENTOS FUNIL SCRIPT",
