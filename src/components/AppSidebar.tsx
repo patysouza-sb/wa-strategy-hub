@@ -1,7 +1,7 @@
 import { 
   LayoutDashboard, MessageSquare, Columns3, Bot, GitBranch, 
   Radio, Users, UsersRound, Zap, Settings, HelpCircle,
-  ChevronDown
+  ChevronDown, CreditCard
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -16,6 +16,7 @@ const menuItems = [
   { title: "Audiência", url: "/audience", icon: Users },
   { title: "Gerente de Grupo", url: "/group-manager", icon: UsersRound },
   { title: "Automação", url: "/automation", icon: Zap },
+  { title: "Minha Assinatura", url: "/subscription", icon: CreditCard },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
 
