@@ -22,6 +22,7 @@ interface BroadcastItem {
   id: number;
   name: string;
   type: string;
+  channelType: string;
   status: "sent" | "scheduled" | "draft";
   sent: number;
   date: string;
@@ -30,8 +31,9 @@ interface BroadcastItem {
 export default function Broadcast() {
   const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [channelFilter, setChannelFilter] = useState<string>("all");
   const [newBroadcast, setNewBroadcast] = useState({
-    name: "", type: "all", tag: "", message: "",
+    name: "", type: "all", channelType: "whatsapp", tag: "", message: "",
     delayMinutes: "1", mediaFiles: [] as MediaFile[],
     includeAudio: false, audioDelayMinutes: "2",
   });
