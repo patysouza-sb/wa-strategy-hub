@@ -160,8 +160,6 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
       }
 
       // ===== Connection validations =====
-      // Terminal blocks legitimately end the flow path (no outgoing required)
-      const terminalTypes = new Set(["chat_controller", "department", "flow_connection"]);
       const out = outgoingByNode.get(n.id) || [];
 
       if (n.type === "menu") {
