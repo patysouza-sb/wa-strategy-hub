@@ -107,12 +107,12 @@ export default function LiveChat() {
     }, 1000);
   };
 
-  const transferToHuman = (contactId: number) => {
+  const transferToHuman = (contactId: string) => {
     setContacts(prev => prev.map(c => c.id === contactId ? { ...c, isBot: false, status: "attending" as Tab, assignedTo: "Patricia" } : c));
     toast.success("Contato transferido para atendente humano");
   };
 
-  const resolveChat = (contactId: number) => {
+  const resolveChat = (contactId: string) => {
     setContacts(prev => prev.map(c => c.id === contactId ? { ...c, status: "resolved" as Tab } : c));
     toast.success("Atendimento finalizado");
   };
