@@ -123,7 +123,7 @@ export default function Broadcast() {
                     <tr key={b.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                       <td className="py-3 px-5 font-medium text-foreground">{b.name}</td>
                       <td className="py-3 px-5">
-                        <Badge variant="outline" className="text-[10px]">{CHANNEL_LABELS[b.channelType] || b.channelType}</Badge>
+                        <Badge variant="outline" className="text-[10px]">{CHANNEL_LABELS[b.channel_type || "whatsapp"] || b.channel_type}</Badge>
                       </td>
                       <td className="py-3 px-5 text-muted-foreground">{b.type}</td>
                       <td className="py-3 px-5 text-center">
