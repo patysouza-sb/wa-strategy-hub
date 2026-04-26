@@ -201,7 +201,12 @@ export default function Automation() {
                           <Zap className={`w-4 h-4 ${rule.status === "active" ? "text-success" : "text-muted-foreground"}`} />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">{rule.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-foreground">{rule.name}</p>
+                            <Badge variant="outline" className="text-[9px]">
+                              {CHANNEL_LABELS[rule.channel_type || "whatsapp"] || rule.channel_type}
+                            </Badge>
+                          </div>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <span className="text-xs text-muted-foreground">Gatilho: <strong>{info.type}</strong></span>
                             {info.action && (
