@@ -4,6 +4,7 @@ import { Search, Phone, Video, MoreVertical, Send, Smile, Paperclip, Mic, Star, 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
 
 type Tab = "attending" | "waiting" | "resolved";
 
