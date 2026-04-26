@@ -1,6 +1,6 @@
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
-import { Search, Phone, Video, MoreVertical, Send, Smile, Paperclip, Mic, Star, Tag, Bot, ArrowRight, CheckCheck, Clock, MessageSquare } from "lucide-react";
+import { Search, Phone, Video, MoreVertical, Send, Smile, Paperclip, Mic, Star, Tag, Bot, ArrowRight, CheckCheck, Clock, MessageSquare, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
