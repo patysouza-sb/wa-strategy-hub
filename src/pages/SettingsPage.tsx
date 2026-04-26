@@ -77,6 +77,7 @@ export default function SettingsPage() {
   const confirmQRConnection = async () => {
     await insert({
       tenant_id: DEFAULT_TENANT_ID,
+      channel_type: newConn.channelType,
       display_name: newConn.name,
       phone_number: newConn.phone,
       status: "connected",
@@ -84,18 +85,18 @@ export default function SettingsPage() {
       welcome_flow_id: newConn.welcomeFlowId || null,
       default_response_flow_id: newConn.defaultFlowId || null,
       closed_flow_id: newConn.closedFlowId || null,
-      connected_at: new Date().toISOString(),
+      last_connected_at: new Date().toISOString(),
     } as any);
-    setNewConn({ name: "", phone: "", welcomeFlowId: "", defaultFlowId: "", closedFlowId: "" });
+    setNewConn({ name: "", phone: "", channelType: "whatsapp", welcomeFlowId: "", defaultFlowId: "", closedFlowId: "" });
     setShowQRCode(false);
-    toast.success("WhatsApp conectado com sucesso!");
+    toast.success("Canal conectado com sucesso!");
   };
 
   const toggleConnection = async (id: string) => {
     const conn = instances.find(c => c.id === id);
     if (!conn) return;
     const newStatus = conn.status === "connected" ? "disconnected" : "connected";
-    await update(id, { status: newStatus, connected_at: newStatus === "connected" ? new Date().toISOString() : conn.connected_at } as any);
+    await update(id, { status: newStatus, last_connected_at: newStatus === "connected" ? new Date().toISOString() : conn.last_connected_at } as any);
   };
 
   const removeConnection = async (id: string) => {
