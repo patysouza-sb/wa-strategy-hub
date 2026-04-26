@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import PlansExpired from "./pages/PlansExpired";
+import MySubscription from "./pages/MySubscription";
 import LiveChat from "./pages/LiveChat";
 import Kanban from "./pages/Kanban";
 import AIService from "./pages/AIService";
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/audience" element={protect(<Audience />)} />
             <Route path="/group-manager" element={protect(<GroupManager />)} />
             <Route path="/automation" element={protect(<Automation />)} />
+            <Route path="/subscription" element={protect(<MySubscription />)} />
             <Route path="/settings" element={protect(<SettingsPage />)} />
             <Route path="/support" element={protect(<Support />)} />
             <Route path="*" element={<NotFound />} />
