@@ -208,7 +208,8 @@ export default function Flows() {
             <h1 className="text-2xl font-bold text-foreground">Fluxos de Conversa</h1>
             <p className="text-sm text-muted-foreground">Crie e gerencie seus funis automatizados de WhatsApp</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <ChannelFilter value={channelFilter} onChange={setChannelFilter} />
             <Button variant="outline" onClick={() => setShowCreateFolder(true)} className="gap-2">
               <FolderPlus className="w-4 h-4" /> Nova Pasta
             </Button>
