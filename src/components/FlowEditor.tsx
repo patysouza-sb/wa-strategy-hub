@@ -99,11 +99,27 @@ export default function FlowEditor({ flowName, onBack, allFlows = [], flowId }: 
   };
 
   // Validation: returns map of nodeId -> array of error messages
-  const validateNodes = useCallback((nodesToCheck: FlowNode[]): Record<string, string[]> => {
+  const validateNodes = useCallback((
+    nodesToCheck: FlowNode[],
+    connectionsToCheck: FlowConnection[] = [],
+  ): Record<string, string[]> => {
     const errors: Record<string, string[]> = {};
     const push = (id: string, msg: string) => {
       (errors[id] ||= []).push(msg);
     };
+
+    // Helper: outgoing connections grouped by source node and (optionally) port
+    const outgoingByNode = new Map<string, FlowConnection[]>();
+    for (const c of connectionsToCheck) {
+      if (!outgoingByNode.has(c.from)) outgoingByNode.set(c.from, []);
+      outgoingByNode.get(c.from)!.push(c);
+    }
+    const hasOut = (nodeId: string, port?: string) => {
+      const list = outgoingByNode.get(nodeId) || [];
+      if (!port) return list.length > 0;
+      return list.some(c => (c.fromPort || "") === port);
+    };
+
     for (const n of nodesToCheck) {
       const d = n.data || {};
       if (n.type === "content") {
