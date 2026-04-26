@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import PlansExpired from "./pages/PlansExpired";
 import LiveChat from "./pages/LiveChat";
 import Kanban from "./pages/Kanban";
 import AIService from "./pages/AIService";
@@ -32,6 +33,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/plans" element={<PlansExpired />} />
             <Route path="/" element={protect(<Index />)} />
             <Route path="/chat" element={protect(<LiveChat />)} />
             <Route path="/kanban" element={protect(<Kanban />)} />
