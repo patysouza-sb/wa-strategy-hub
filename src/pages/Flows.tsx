@@ -185,7 +185,9 @@ export default function Flows() {
     toast.success("Pasta excluída");
   };
 
-  const getFlowsInFolder = (folderId: string) => flows.filter(f => f.folder_id === folderId);
+  const getFlowsInFolder = (folderId: string) =>
+    flows.filter(f => f.folder_id === folderId)
+      .filter(f => channelFilter === "all" ? true : (f.channel_type || "whatsapp") === channelFilter);
 
   if (foldersLoading || flowsLoading) {
     return (
