@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
+import { useSupabaseTable } from "@/hooks/useSupabaseData";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 
 interface MediaFile {
   id: number;
@@ -18,18 +20,18 @@ interface MediaFile {
   size: string;
 }
 
-interface BroadcastItem {
-  id: number;
+interface BroadcastRow {
+  id: string;
   name: string;
   type: string;
-  channelType: string;
-  status: "sent" | "scheduled" | "draft";
-  sent: number;
-  date: string;
+  channel_type: string;
+  status: string;
+  created_at?: string;
+  scheduled_at?: string | null;
 }
 
 export default function Broadcast() {
-  const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>([]);
+  const { data: broadcasts, insert } = useSupabaseTable<BroadcastRow>("broadcasts", "created_at");
   const [showCreate, setShowCreate] = useState(false);
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [newBroadcast, setNewBroadcast] = useState({
@@ -57,20 +59,20 @@ export default function Broadcast() {
     setNewBroadcast(p => ({ ...p, mediaFiles: p.mediaFiles.filter(f => f.id !== id) }));
   };
 
-  const createBroadcast = () => {
+  const createBroadcast = async () => {
     if (!newBroadcast.name || !newBroadcast.message) return;
-    setBroadcasts(prev => [...prev, {
-      id: Date.now(),
+    const inserted = await insert({
       name: newBroadcast.name,
-      type: newBroadcast.type === "all" ? "Todos contatos" : newBroadcast.type === "list" ? "Lista" : "Etiqueta",
-      channelType: newBroadcast.channelType,
+      type: newBroadcast.type === "all" ? "all" : newBroadcast.type === "list" ? "contact_list" : "tag",
+      channel_type: newBroadcast.channelType,
       status: "draft",
-      sent: 0,
-      date: new Date().toLocaleDateString("pt-BR"),
-    }]);
-    setNewBroadcast({ name: "", type: "all", channelType: "whatsapp", tag: "", message: "", delayMinutes: "1", mediaFiles: [], includeAudio: false, audioDelayMinutes: "2" });
-    setShowCreate(false);
-    toast.success("Transmissão criada com sucesso!");
+      tenant_id: DEFAULT_TENANT_ID,
+    } as any);
+    if (inserted) {
+      setNewBroadcast({ name: "", type: "all", channelType: "whatsapp", tag: "", message: "", delayMinutes: "1", mediaFiles: [], includeAudio: false, audioDelayMinutes: "2" });
+      setShowCreate(false);
+      toast.success("Transmissão criada com sucesso!");
+    }
   };
 
   return (
@@ -90,7 +92,7 @@ export default function Broadcast() {
         </div>
 
         {(() => {
-          const filtered = broadcasts.filter(b => channelFilter === "all" || b.channelType === channelFilter);
+          const filtered = broadcasts.filter(b => channelFilter === "all" || (b.channel_type || "whatsapp") === channelFilter);
           if (filtered.length === 0) {
             return (
               <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-center py-16 text-center">
@@ -121,7 +123,7 @@ export default function Broadcast() {
                     <tr key={b.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                       <td className="py-3 px-5 font-medium text-foreground">{b.name}</td>
                       <td className="py-3 px-5">
-                        <Badge variant="outline" className="text-[10px]">{CHANNEL_LABELS[b.channelType] || b.channelType}</Badge>
+                        <Badge variant="outline" className="text-[10px]">{CHANNEL_LABELS[b.channel_type || "whatsapp"] || b.channel_type}</Badge>
                       </td>
                       <td className="py-3 px-5 text-muted-foreground">{b.type}</td>
                       <td className="py-3 px-5 text-center">
@@ -133,8 +135,8 @@ export default function Broadcast() {
                           {b.status === "sent" ? "Enviado" : b.status === "scheduled" ? "Agendado" : "Rascunho"}
                         </Badge>
                       </td>
-                      <td className="py-3 px-5 text-center text-foreground">{b.sent}</td>
-                      <td className="py-3 px-5 text-center text-muted-foreground">{b.date}</td>
+                      <td className="py-3 px-5 text-center text-foreground">0</td>
+                      <td className="py-3 px-5 text-center text-muted-foreground">{b.created_at ? new Date(b.created_at).toLocaleDateString("pt-BR") : "-"}</td>
                       <td className="py-3 px-5 text-right">
                         <Button variant="ghost" size="icon" className="w-7 h-7"><MoreVertical className="w-3.5 h-3.5" /></Button>
                       </td>

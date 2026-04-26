@@ -773,6 +773,7 @@ export type Database = {
           assigned_team_id: string | null
           assigned_user_id: string | null
           channel_id: string | null
+          channel_type: string
           contact_id: string
           created_at: string
           department_id: string | null
@@ -787,6 +788,7 @@ export type Database = {
           assigned_team_id?: string | null
           assigned_user_id?: string | null
           channel_id?: string | null
+          channel_type?: string
           contact_id: string
           created_at?: string
           department_id?: string | null
@@ -801,6 +803,7 @@ export type Database = {
           assigned_team_id?: string | null
           assigned_user_id?: string | null
           channel_id?: string | null
+          channel_type?: string
           contact_id?: string
           created_at?: string
           department_id?: string | null
