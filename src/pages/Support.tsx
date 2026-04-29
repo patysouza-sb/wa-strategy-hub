@@ -9,7 +9,7 @@ const items = [
     title: "Central de Ajuda",
     desc: "Artigos e guias completos sobre o sistema",
     action: "Acessar",
-    href: "https://wa.me/SEU_NUMERO?text=Preciso+de+ajuda+com+a+Central",
+    href: "https://wa.me/5511969458142?text=Preciso+de+ajuda+com+a+Central",
     color: "bg-blue-500/10 text-blue-500",
   },
   {
@@ -17,7 +17,7 @@ const items = [
     title: "Tutoriais em Vídeo",
     desc: "Passo a passo em vídeo para usar o sistema",
     action: "Ver tutoriais",
-    href: "https://wa.me/SEU_NUMERO?text=Quero+ver+os+tutoriais",
+    href: "https://wa.me/5511969458142?text=Quero+ver+os+tutoriais",
     color: "bg-purple-500/10 text-purple-500",
   },
   {
@@ -25,7 +25,7 @@ const items = [
     title: "Falar com Suporte",
     desc: "Atendimento direto via WhatsApp",
     action: "Abrir WhatsApp",
-    href: "https://wa.me/SEU_NUMERO?text=Ol%C3%A1%2C+preciso+de+suporte",
+    href: "https://wa.me/5511969458142?text=Ol%C3%A1%2C+preciso+de+suporte",
     color: "bg-green-500/10 text-green-500",
     highlight: true,
   },
@@ -34,7 +34,7 @@ const items = [
     title: "Perguntas Frequentes",
     desc: "Respostas para as dúvidas mais comuns",
     action: "Ver FAQ",
-    href: "https://wa.me/SEU_NUMERO?text=Tenho+uma+d%C3%BAvida",
+    href: "https://wa.me/5511969458142?text=Tenho+uma+d%C3%BAvida",
     color: "bg-orange-500/10 text-orange-500",
   },
 ];
