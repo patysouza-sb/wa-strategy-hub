@@ -363,4 +363,136 @@ export default function SettingsPage() {
       </Dialog>
     </AppLayout>
   );
+}<Dialog open={showAddTag} onOpenChange={setShowAddTag}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Nova Etiqueta</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Nome</label>
+              <Input placeholder="Ex: Cliente VIP" value={newTag.name} onChange={e => setNewTag(p => ({ ...p, name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-2 block">Cor</label>
+              <div className="flex gap-2 flex-wrap">
+                {TAG_COLORS.map(c => (
+                  <button key={c.value} onClick={() => setNewTag(p => ({ ...p, color: c.value }))}
+                    className={`w-8 h-8 rounded-full ${c.value} ${newTag.color === c.value ? "ring-2 ring-offset-2 ring-primary" : ""}`} />
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddTag(false)}>Cancelar</Button>
+            <Button onClick={handleAddTag}>Criar Etiqueta</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAddDept} onOpenChange={setShowAddDept}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Novo Departamento</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Nome</label>
+              <Input placeholder="Ex: Vendas" value={newDept.name} onChange={e => setNewDept(p => ({ ...p, name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Descrição</label>
+              <Input placeholder="Ex: Equipe de vendas" value={newDept.description} onChange={e => setNewDept(p => ({ ...p, description: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddDept(false)}>Cancelar</Button>
+            <Button onClick={handleAddDept}>Criar Departamento</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAddMember} onOpenChange={setShowAddMember}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Adicionar Membro</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Nome</label>
+              <Input placeholder="Nome completo" value={newMember.name} onChange={e => setNewMember(p => ({ ...p, name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">E-mail</label>
+              <Input placeholder="email@empresa.com" value={newMember.email} onChange={e => setNewMember(p => ({ ...p, email: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Função</label>
+              <Select value={newMember.role} onValueChange={v => setNewMember(p => ({ ...p, role: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="agent">Agente</SelectItem>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddMember(false)}>Cancelar</Button>
+            <Button onClick={handleAddMember}>Adicionar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAddConnection} onOpenChange={setShowAddConnection}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Adicionar Canal</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Tipo de Canal</label>
+              <Select value={newConn.channelType} onValueChange={v => setNewConn(p => ({ ...p, channelType: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>{CHANNEL_TYPES.map(c => (<SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>))}</SelectContent>
+              </Select>
+            </div>
+            <div><label className="text-xs font-medium text-muted-foreground">Nome da Conexão</label><Input value={newConn.name} onChange={e => setNewConn(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Atendimento Principal" className="mt-1" /></div>
+            <div><label className="text-xs font-medium text-muted-foreground">Número</label><Input value={newConn.phone} onChange={e => setNewConn(p => ({ ...p, phone: e.target.value }))} placeholder="+55 11 99999-0000" className="mt-1" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddConnection(false)}>Cancelar</Button>
+            <Button onClick={startQRCode} className="bg-primary gap-2"><QrCode className="w-4 h-4" /> Gerar QR Code</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showQRCode} onOpenChange={() => setShowQRCode(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><QrCode className="w-5 h-5" /> Escanear QR Code</DialogTitle></DialogHeader>
+          <div className="flex flex-col items-center space-y-4 py-4">
+            <p className="text-sm text-muted-foreground text-center">Abra o <strong>WhatsApp Business</strong> → Menu → <strong>Aparelhos conectados</strong> → <strong>Conectar</strong></p>
+            <div className="relative w-64 h-64 border-2 border-border rounded-2xl flex items-center justify-center bg-white">
+              {qrExpired ? (
+                <div className="flex flex-col items-center gap-3">
+                  <QrCode className="w-16 h-16 text-muted-foreground/30" />
+                  <p className="text-xs text-muted-foreground">QR Code expirado</p>
+                  <Button size="sm" variant="outline" onClick={() => { setQrExpired(false); setQrTimer(60); }} className="gap-1.5"><RefreshCw className="w-3.5 h-3.5" /> Atualizar</Button>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-11 gap-[2px] p-4">
+                    {Array.from({ length: 121 }, (_, i) => {
+                      const row = Math.floor(i / 11); const col = i % 11;
+                      const isCorner = (row < 3 && col < 3) || (row < 3 && col > 7) || (row > 7 && col < 3);
+                      return (<div key={i} className={`w-3.5 h-3.5 rounded-[1px] ${isCorner || Math.random() > 0.5 ? "bg-foreground" : "bg-transparent"}`} />);
+                    })}
+                  </div>
+                  <div className="absolute bottom-3 right-3 bg-background/80 rounded-md px-2 py-1">
+                    <span className="text-xs font-mono text-muted-foreground">{qrTimer}s</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowQRCode(false)}>Cancelar</Button>
+            <Button onClick={confirmQRConnection} className="bg-green-500 hover:bg-green-600 text-white gap-2"><Wifi className="w-4 h-4" /> Já escaneei</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </AppLayout>
+  );
 }
