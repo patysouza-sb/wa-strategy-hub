@@ -1,8 +1,3 @@
-bash
-
-cat /mnt/user-data/outputs/SettingsPage.tsx
-Saída
-
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { Phone, Plus, Trash2, Wifi, WifiOff, QrCode, RefreshCw, MessageCircle, Instagram, Mail, Globe, Tag, Building2, Users, Clock, Edit2, Check, X } from "lucide-react";
