@@ -62,6 +62,7 @@ const ACTION_LABELS: Record<string, string> = {
 const queueToTab = (q: string): Tab => q === "resolved" ? "resolved" : q === "attending" ? "attending" : "waiting";
 
 export default function LiveChat() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("attending");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -72,6 +73,20 @@ export default function LiveChat() {
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [showAudit, setShowAudit] = useState(false);
+  const [operator, setOperator] = useState<{ id: string | null; name: string }>({ id: null, name: "Operador" });
+
+  useEffect(() => {
+    if (!user?.id) return;
+    (supabase as any)
+      .from("users")
+      .select("id, name")
+      .eq("auth_user_id", user.id)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        if (data) setOperator({ id: data.id, name: data.name || user.email || "Operador" });
+      });
+  }, [user?.id]);
+
 
   const loadAuditLogs = async (conversationId: ContactId) => {
     const { data, error } = await (supabase as any)
