@@ -107,8 +107,8 @@ export default function LiveChat() {
       .insert({
         conversation_id: conversationId,
         action,
-        performed_by_user_id: CURRENT_OPERATOR.id,
-        performed_by_name: CURRENT_OPERATOR.name,
+        performed_by_user_id: operator.id,
+        performed_by_name: operator.name,
         notes: notes || null,
       })
       .select()
@@ -186,7 +186,7 @@ export default function LiveChat() {
       toast.error("ID de contato inválido");
       return;
     }
-    setContacts(prev => prev.map(c => c.id === contactId ? { ...c, isBot: false, status: "attending" as Tab, assignedTo: CURRENT_OPERATOR.name } : c));
+    setContacts(prev => prev.map(c => c.id === contactId ? { ...c, isBot: false, status: "attending" as Tab, assignedTo: operator.name } : c));
     const { error } = await (supabase as any)
       .from("conversations")
       .update({ ai_agent_id: null, queue_status: "attending" })
@@ -195,7 +195,7 @@ export default function LiveChat() {
       toast.error("Erro ao transferir: " + error.message);
       return;
     }
-    await recordAudit(contactId, "transfer_to_human", `Transferido para ${CURRENT_OPERATOR.name}`);
+    await recordAudit(contactId, "transfer_to_human", `Transferido para ${operator.name}`);
     toast.success("Contato transferido para atendente humano");
   };
 
