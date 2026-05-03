@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Tab = "attending" | "waiting" | "resolved";
 type ContactId = string; // UUID da conversation — sempre string para evitar mismatch com number
@@ -56,12 +57,12 @@ const ACTION_LABELS: Record<string, string> = {
   resolve: "Finalizou atendimento",
 };
 
-// Identificação do operador atual (placeholder até auth completa)
-const CURRENT_OPERATOR = { id: null as string | null, name: "Patricia" };
+// Operador atual é resolvido a partir do usuário autenticado dentro do componente
 
 const queueToTab = (q: string): Tab => q === "resolved" ? "resolved" : q === "attending" ? "attending" : "waiting";
 
 export default function LiveChat() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("attending");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -72,6 +73,20 @@ export default function LiveChat() {
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [showAudit, setShowAudit] = useState(false);
+  const [operator, setOperator] = useState<{ id: string | null; name: string }>({ id: null, name: "Operador" });
+
+  useEffect(() => {
+    if (!user?.id) return;
+    (supabase as any)
+      .from("users")
+      .select("id, name")
+      .eq("auth_user_id", user.id)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        if (data) setOperator({ id: data.id, name: data.name || user.email || "Operador" });
+      });
+  }, [user?.id]);
+
 
   const loadAuditLogs = async (conversationId: ContactId) => {
     const { data, error } = await (supabase as any)
@@ -92,8 +107,8 @@ export default function LiveChat() {
       .insert({
         conversation_id: conversationId,
         action,
-        performed_by_user_id: CURRENT_OPERATOR.id,
-        performed_by_name: CURRENT_OPERATOR.name,
+        performed_by_user_id: operator.id,
+        performed_by_name: operator.name,
         notes: notes || null,
       })
       .select()
@@ -171,7 +186,7 @@ export default function LiveChat() {
       toast.error("ID de contato inválido");
       return;
     }
-    setContacts(prev => prev.map(c => c.id === contactId ? { ...c, isBot: false, status: "attending" as Tab, assignedTo: CURRENT_OPERATOR.name } : c));
+    setContacts(prev => prev.map(c => c.id === contactId ? { ...c, isBot: false, status: "attending" as Tab, assignedTo: operator.name } : c));
     const { error } = await (supabase as any)
       .from("conversations")
       .update({ ai_agent_id: null, queue_status: "attending" })
@@ -180,7 +195,7 @@ export default function LiveChat() {
       toast.error("Erro ao transferir: " + error.message);
       return;
     }
-    await recordAudit(contactId, "transfer_to_human", `Transferido para ${CURRENT_OPERATOR.name}`);
+    await recordAudit(contactId, "transfer_to_human", `Transferido para ${operator.name}`);
     toast.success("Contato transferido para atendente humano");
   };
 

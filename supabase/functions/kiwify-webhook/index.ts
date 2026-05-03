@@ -42,9 +42,8 @@ Deno.serve(async (req) => {
     return json({ error: "Server misconfigured" }, 500);
   }
   {
-    const url = new URL(req.url);
-    const provided = url.searchParams.get("secret") || req.headers.get("x-kiwify-signature");
-    if (provided !== WEBHOOK_SECRET) {
+    const provided = req.headers.get("x-kiwify-signature");
+    if (!provided || provided !== WEBHOOK_SECRET) {
       return json({ error: "Unauthorized" }, 401);
     }
   }
