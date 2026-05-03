@@ -11,7 +11,7 @@ export function useTenantId(): string | null {
   const [tenantId, setTenantId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user?.email) {
+    if (!user?.id) {
       setTenantId(null);
       return;
     }
@@ -19,7 +19,7 @@ export function useTenantId(): string | null {
     supabase
       .from("users")
       .select("tenant_id")
-      .eq("email", user.email)
+      .eq("auth_user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (!cancelled) setTenantId((data as any)?.tenant_id ?? null);
@@ -27,7 +27,7 @@ export function useTenantId(): string | null {
     return () => {
       cancelled = true;
     };
-  }, [user?.email]);
+  }, [user?.id]);
 
   return tenantId;
 }
