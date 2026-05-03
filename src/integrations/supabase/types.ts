@@ -2220,6 +2220,7 @@ export type Database = {
       }
       users: {
         Row: {
+          auth_user_id: string | null
           avatar_url: string | null
           created_at: string
           department_id: string | null
@@ -2231,6 +2232,7 @@ export type Database = {
           tenant_id: string
         }
         Insert: {
+          auth_user_id?: string | null
           avatar_url?: string | null
           created_at?: string
           department_id?: string | null
@@ -2242,6 +2244,7 @@ export type Database = {
           tenant_id: string
         }
         Update: {
+          auth_user_id?: string | null
           avatar_url?: string | null
           created_at?: string
           department_id?: string | null
