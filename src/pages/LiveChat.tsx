@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Tab = "attending" | "waiting" | "resolved";
 type ContactId = string; // UUID da conversation — sempre string para evitar mismatch com number
