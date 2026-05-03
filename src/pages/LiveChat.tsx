@@ -57,8 +57,7 @@ const ACTION_LABELS: Record<string, string> = {
   resolve: "Finalizou atendimento",
 };
 
-// Identificação do operador atual (placeholder até auth completa)
-const CURRENT_OPERATOR = { id: null as string | null, name: "Patricia" };
+// Operador atual é resolvido a partir do usuário autenticado dentro do componente
 
 const queueToTab = (q: string): Tab => q === "resolved" ? "resolved" : q === "attending" ? "attending" : "waiting";
 
