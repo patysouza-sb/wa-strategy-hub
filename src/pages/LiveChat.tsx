@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { ChannelFilter, CHANNEL_LABELS } from "@/components/ChannelFilter";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLiveChatGuard } from "@/hooks/useLiveChatGuard";
+import { ShieldAlert, Loader2 } from "lucide-react";
 
 type Tab = "attending" | "waiting" | "resolved";
 type ContactId = string; // UUID da conversation — sempre string para evitar mismatch com number
