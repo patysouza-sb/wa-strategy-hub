@@ -99,6 +99,7 @@ export function useLiveChatGuard(): LiveChatGuardState {
       if (cancelledRef.current) return;
 
       if (error) {
+        const nextSec = Math.round(nextDelay(attempt) / 1000);
         setState({
           loading: false,
           authenticated: true,
@@ -108,13 +109,14 @@ export function useLiveChatGuard(): LiveChatGuardState {
           exhausted,
           reason: exhausted
             ? `Não foi possível validar o webhook Kiwify após ${MAX_REVALIDATIONS} tentativas. Recarregue a página para tentar novamente.`
-            : "Não foi possível validar o webhook Kiwify (acesso negado ou erro de rede). Nova tentativa em 10s.",
+            : `Não foi possível validar o webhook Kiwify (acesso negado ou erro de rede). Nova tentativa em ${nextSec}s.`,
         });
         if (!exhausted) scheduleNext();
         return;
       }
 
       const verified = (count ?? 0) > 0;
+      const nextSec = Math.round(nextDelay(attempt) / 1000);
       setState({
         loading: false,
         authenticated: true,
@@ -125,8 +127,8 @@ export function useLiveChatGuard(): LiveChatGuardState {
         reason: verified
           ? null
           : exhausted
-            ? `Webhook Kiwify não foi confirmado após ${MAX_REVALIDATIONS} tentativas (${Math.round((MAX_REVALIDATIONS * REVALIDATE_INTERVAL_MS) / 1000)}s). Verifique a configuração da Kiwify e recarregue a página.`
-            : `Aguardando confirmação do webhook Kiwify (tentativa ${attempt}/${MAX_REVALIDATIONS}). Verificando novamente em 10s...`,
+            ? `Webhook Kiwify não foi confirmado após ${MAX_REVALIDATIONS} tentativas. Verifique a configuração da Kiwify e recarregue a página.`
+            : `Aguardando confirmação do webhook Kiwify (tentativa ${attempt}/${MAX_REVALIDATIONS}). Próxima verificação em ${nextSec}s (backoff exponencial)...`,
       });
 
       if (verified) {
