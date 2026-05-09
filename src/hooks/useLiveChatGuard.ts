@@ -9,7 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
  *     pela edge function — eventos só são persistidos após validação do header).
  *
  * Enquanto o webhook não for confirmado, o guard é revalidado automaticamente
- * a cada 10 segundos, sem necessidade de recarregar a página.
+ * a cada 10 segundos, até o limite de MAX_REVALIDATIONS tentativas, para
+ * evitar polling infinito caso o webhook nunca chegue.
  */
 export interface LiveChatGuardState {
   loading: boolean;
@@ -17,9 +18,12 @@ export interface LiveChatGuardState {
   webhookVerified: boolean;
   enabled: boolean;
   reason: string | null;
+  attempts: number;
+  exhausted: boolean;
 }
 
 const REVALIDATE_INTERVAL_MS = 10_000;
+const MAX_REVALIDATIONS = 30;
 
 export function useLiveChatGuard(): LiveChatGuardState {
   const [state, setState] = useState<LiveChatGuardState>({
@@ -28,13 +32,17 @@ export function useLiveChatGuard(): LiveChatGuardState {
     webhookVerified: false,
     enabled: false,
     reason: null,
+    attempts: 0,
+    exhausted: false,
   });
 
   const cancelledRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const attemptsRef = useRef(0);
 
   useEffect(() => {
     cancelledRef.current = false;
+    attemptsRef.current = 0;
 
     const clearTimer = () => {
       if (timerRef.current) {
@@ -44,15 +52,21 @@ export function useLiveChatGuard(): LiveChatGuardState {
     };
 
     const scheduleNext = () => {
+      if (attemptsRef.current >= MAX_REVALIDATIONS) return;
       clearTimer();
       timerRef.current = setTimeout(check, REVALIDATE_INTERVAL_MS);
     };
 
     const check = async () => {
+      attemptsRef.current += 1;
+      const attempt = attemptsRef.current;
+
       const { data: sessionData } = await supabase.auth.getSession();
       const session = sessionData.session;
 
       if (cancelledRef.current) return;
+
+      const exhausted = attempt >= MAX_REVALIDATIONS;
 
       if (!session?.user) {
         setState({
@@ -60,9 +74,11 @@ export function useLiveChatGuard(): LiveChatGuardState {
           authenticated: false,
           webhookVerified: false,
           enabled: false,
+          attempts: attempt,
+          exhausted,
           reason: "Sessão não autenticada. Faça login para usar o Bate Papo ao Vivo.",
         });
-        scheduleNext();
+        if (!exhausted) scheduleNext();
         return;
       }
 
@@ -79,9 +95,13 @@ export function useLiveChatGuard(): LiveChatGuardState {
           authenticated: true,
           webhookVerified: false,
           enabled: false,
-          reason: "Não foi possível validar o webhook Kiwify (acesso negado ou erro de rede). Nova tentativa em 10s.",
+          attempts: attempt,
+          exhausted,
+          reason: exhausted
+            ? `Não foi possível validar o webhook Kiwify após ${MAX_REVALIDATIONS} tentativas. Recarregue a página para tentar novamente.`
+            : "Não foi possível validar o webhook Kiwify (acesso negado ou erro de rede). Nova tentativa em 10s.",
         });
-        scheduleNext();
+        if (!exhausted) scheduleNext();
         return;
       }
 
@@ -91,15 +111,19 @@ export function useLiveChatGuard(): LiveChatGuardState {
         authenticated: true,
         webhookVerified: verified,
         enabled: verified,
+        attempts: attempt,
+        exhausted: !verified && exhausted,
         reason: verified
           ? null
-          : "Aguardando confirmação do webhook Kiwify (header x-kiwify-signature). Verificando novamente a cada 10s...",
+          : exhausted
+            ? `Webhook Kiwify não foi confirmado após ${MAX_REVALIDATIONS} tentativas (${Math.round((MAX_REVALIDATIONS * REVALIDATE_INTERVAL_MS) / 1000)}s). Verifique a configuração da Kiwify e recarregue a página.`
+            : `Aguardando confirmação do webhook Kiwify (tentativa ${attempt}/${MAX_REVALIDATIONS}). Verificando novamente em 10s...`,
       });
 
-      if (!verified) {
-        scheduleNext();
-      } else {
+      if (verified) {
         clearTimer();
+      } else if (!exhausted) {
+        scheduleNext();
       }
     };
 
