@@ -220,6 +220,33 @@ export default function LiveChat() {
     toast.success("Atendimento finalizado");
   };
 
+  if (guard.loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-[calc(100vh-8rem)] bg-card rounded-xl border border-border">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <span className="ml-3 text-sm text-muted-foreground">Validando sessão e webhook…</span>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!guard.enabled) {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] bg-card rounded-xl border border-border p-10 text-center">
+          <ShieldAlert className="w-12 h-12 text-amber-500 mb-4" />
+          <h2 className="text-lg font-semibold text-foreground">Bate Papo ao Vivo indisponível</h2>
+          <p className="text-sm text-muted-foreground mt-2 max-w-md">{guard.reason}</p>
+          <ul className="mt-6 text-xs text-muted-foreground space-y-1">
+            <li>• Sessão autenticada: {guard.authenticated ? "✅" : "❌"}</li>
+            <li>• Webhook Kiwify validado (x-kiwify-signature): {guard.webhookVerified ? "✅" : "❌"}</li>
+          </ul>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="flex h-[calc(100vh-8rem)] bg-card rounded-xl border border-border overflow-hidden">
