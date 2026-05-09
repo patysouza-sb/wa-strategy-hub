@@ -241,7 +241,18 @@ export default function LiveChat() {
           <ul className="mt-6 text-xs text-muted-foreground space-y-1">
             <li>• Sessão autenticada: {guard.authenticated ? "✅" : "❌"}</li>
             <li>• Webhook Kiwify validado (x-kiwify-signature): {guard.webhookVerified ? "✅" : "❌"}</li>
+            {!guard.webhookVerified && (
+              <li>• Tentativas de revalidação: {guard.attempts}/30 {guard.exhausted ? "(limite atingido)" : ""}</li>
+            )}
           </ul>
+          {guard.exhausted && (
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-6 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+            >
+              Recarregar página
+            </button>
+          )}
         </div>
       </AppLayout>
     );
