@@ -65,6 +65,7 @@ const queueToTab = (q: string): Tab => q === "resolved" ? "resolved" : q === "at
 
 export default function LiveChat() {
   const { user } = useAuth();
+  const guard = useLiveChatGuard();
   const [activeTab, setActiveTab] = useState<Tab>("attending");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
