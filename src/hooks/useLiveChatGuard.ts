@@ -22,8 +22,16 @@ export interface LiveChatGuardState {
   exhausted: boolean;
 }
 
-const REVALIDATE_INTERVAL_MS = 10_000;
+const INITIAL_INTERVAL_MS = 10_000;
+const MAX_INTERVAL_MS = 5 * 60_000; // 5 minutos
+const BACKOFF_FACTOR = 1.5;
 const MAX_REVALIDATIONS = 30;
+
+/** Backoff exponencial: 10s, 15s, 22s, 33s, ... limitado a 5min. */
+function nextDelay(attempt: number): number {
+  const delay = INITIAL_INTERVAL_MS * Math.pow(BACKOFF_FACTOR, Math.max(0, attempt - 1));
+  return Math.min(delay, MAX_INTERVAL_MS);
+}
 
 export function useLiveChatGuard(): LiveChatGuardState {
   const [state, setState] = useState<LiveChatGuardState>({
