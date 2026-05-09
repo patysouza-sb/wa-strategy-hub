@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -7,6 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
  *  2. Foi registrado pelo menos um evento de webhook Kiwify para o tenant
  *     (prova de que a assinatura `x-kiwify-signature` chegou e foi validada
  *     pela edge function — eventos só são persistidos após validação do header).
+ *
+ * Enquanto o webhook não for confirmado, o guard é revalidado automaticamente
+ * a cada 10 segundos, sem necessidade de recarregar a página.
  */
 export interface LiveChatGuardState {
   loading: boolean;
@@ -15,6 +18,8 @@ export interface LiveChatGuardState {
   enabled: boolean;
   reason: string | null;
 }
+
+const REVALIDATE_INTERVAL_MS = 10_000;
 
 export function useLiveChatGuard(): LiveChatGuardState {
   const [state, setState] = useState<LiveChatGuardState>({
@@ -25,23 +30,39 @@ export function useLiveChatGuard(): LiveChatGuardState {
     reason: null,
   });
 
-  useEffect(() => {
-    let cancelled = false;
+  const cancelledRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    (async () => {
+  useEffect(() => {
+    cancelledRef.current = false;
+
+    const clearTimer = () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+
+    const scheduleNext = () => {
+      clearTimer();
+      timerRef.current = setTimeout(check, REVALIDATE_INTERVAL_MS);
+    };
+
+    const check = async () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const session = sessionData.session;
 
+      if (cancelledRef.current) return;
+
       if (!session?.user) {
-        if (!cancelled) {
-          setState({
-            loading: false,
-            authenticated: false,
-            webhookVerified: false,
-            enabled: false,
-            reason: "Sessão não autenticada. Faça login para usar o Bate Papo ao Vivo.",
-          });
-        }
+        setState({
+          loading: false,
+          authenticated: false,
+          webhookVerified: false,
+          enabled: false,
+          reason: "Sessão não autenticada. Faça login para usar o Bate Papo ao Vivo.",
+        });
+        scheduleNext();
         return;
       }
 
@@ -50,7 +71,7 @@ export function useLiveChatGuard(): LiveChatGuardState {
         .select("id", { count: "exact", head: true })
         .eq("source", "kiwify");
 
-      if (cancelled) return;
+      if (cancelledRef.current) return;
 
       if (error) {
         setState({
@@ -58,8 +79,9 @@ export function useLiveChatGuard(): LiveChatGuardState {
           authenticated: true,
           webhookVerified: false,
           enabled: false,
-          reason: "Não foi possível validar o webhook Kiwify (acesso negado ou erro de rede).",
+          reason: "Não foi possível validar o webhook Kiwify (acesso negado ou erro de rede). Nova tentativa em 10s.",
         });
+        scheduleNext();
         return;
       }
 
@@ -71,12 +93,21 @@ export function useLiveChatGuard(): LiveChatGuardState {
         enabled: verified,
         reason: verified
           ? null
-          : "Aguardando confirmação do webhook Kiwify (header x-kiwify-signature). O Bate Papo ao Vivo será liberado após o primeiro evento validado.",
+          : "Aguardando confirmação do webhook Kiwify (header x-kiwify-signature). Verificando novamente a cada 10s...",
       });
-    })();
+
+      if (!verified) {
+        scheduleNext();
+      } else {
+        clearTimer();
+      }
+    };
+
+    check();
 
     return () => {
-      cancelled = true;
+      cancelledRef.current = true;
+      clearTimer();
     };
   }, []);
 
