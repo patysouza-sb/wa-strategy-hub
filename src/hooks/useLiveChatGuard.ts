@@ -62,7 +62,8 @@ export function useLiveChatGuard(): LiveChatGuardState {
     const scheduleNext = () => {
       if (attemptsRef.current >= MAX_REVALIDATIONS) return;
       clearTimer();
-      timerRef.current = setTimeout(check, REVALIDATE_INTERVAL_MS);
+      const delay = nextDelay(attemptsRef.current);
+      timerRef.current = setTimeout(check, delay);
     };
 
     const check = async () => {
