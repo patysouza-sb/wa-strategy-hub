@@ -2402,6 +2402,7 @@ export type Database = {
     }
     Functions: {
       current_tenant_id: { Args: never; Returns: string }
+      current_user_department_id: { Args: never; Returns: string }
       current_user_is_admin: { Args: never; Returns: boolean }
       current_user_subscription_active: { Args: never; Returns: boolean }
     }
