@@ -9,9 +9,21 @@ import { supabase } from "@/integrations/supabase/client";
  *     pela edge function — eventos só são persistidos após validação do header).
  *
  * Enquanto o webhook não for confirmado, o guard é revalidado automaticamente
- * a cada 10 segundos, até o limite de MAX_REVALIDATIONS tentativas, para
+ * com backoff exponencial, até o limite de MAX_REVALIDATIONS tentativas, para
  * evitar polling infinito caso o webhook nunca chegue.
+ *
+ * Para diagnóstico, todas as falhas são classificadas em `failureKind`
+ * ("network" | "permission" | "signature" | "auth" | "unknown") e o detalhe
+ * técnico é exposto em `lastErrorDetail` + logado no console.
  */
+export type LiveChatGuardFailureKind =
+  | "none"
+  | "auth"
+  | "network"
+  | "permission"
+  | "signature"
+  | "unknown";
+
 export interface LiveChatGuardState {
   loading: boolean;
   authenticated: boolean;
@@ -20,17 +32,87 @@ export interface LiveChatGuardState {
   reason: string | null;
   attempts: number;
   exhausted: boolean;
+  failureKind: LiveChatGuardFailureKind;
+  lastErrorDetail: string | null;
+  lastErrorCode: string | null;
 }
 
 const INITIAL_INTERVAL_MS = 10_000;
-const MAX_INTERVAL_MS = 5 * 60_000; // 5 minutos
+const MAX_INTERVAL_MS = 5 * 60_000;
 const BACKOFF_FACTOR = 1.5;
 const MAX_REVALIDATIONS = 30;
 
-/** Backoff exponencial: 10s, 15s, 22s, 33s, ... limitado a 5min. */
 function nextDelay(attempt: number): number {
   const delay = INITIAL_INTERVAL_MS * Math.pow(BACKOFF_FACTOR, Math.max(0, attempt - 1));
   return Math.min(delay, MAX_INTERVAL_MS);
+}
+
+/**
+ * Classifica o erro retornado pelo Supabase/PostgREST para facilitar o diagnóstico.
+ *  - network    → falha de fetch/CORS/offline
+ *  - permission → RLS bloqueou (42501 / "permission denied")
+ *  - signature  → tabela ou recurso ausente, indicando que a edge function nunca
+ *                 inseriu evento (assinatura `x-kiwify-signature` provavelmente
+ *                 foi rejeitada antes do insert ou tabela não foi migrada)
+ *  - unknown    → outros casos
+ */
+function classifyError(error: any): {
+  kind: LiveChatGuardFailureKind;
+  detail: string;
+  code: string | null;
+} {
+  const message = String(error?.message ?? error ?? "Erro desconhecido");
+  const code = error?.code ? String(error.code) : null;
+  const status = error?.status ?? null;
+
+  const lower = message.toLowerCase();
+
+  if (
+    lower.includes("failed to fetch") ||
+    lower.includes("networkerror") ||
+    lower.includes("network request failed") ||
+    lower.includes("load failed")
+  ) {
+    return { kind: "network", detail: message, code };
+  }
+
+  if (
+    code === "42501" ||
+    status === 401 ||
+    status === 403 ||
+    lower.includes("permission denied") ||
+    lower.includes("rls") ||
+    lower.includes("not authorized")
+  ) {
+    return { kind: "permission", detail: message, code };
+  }
+
+  if (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    lower.includes("does not exist") ||
+    lower.includes("relation") ||
+    lower.includes("schema cache")
+  ) {
+    return { kind: "signature", detail: message, code };
+  }
+
+  return { kind: "unknown", detail: message, code };
+}
+
+function describeFailure(kind: LiveChatGuardFailureKind): string {
+  switch (kind) {
+    case "network":
+      return "Falha de rede ao consultar o webhook Kiwify (verifique conexão/CORS).";
+    case "permission":
+      return "Acesso negado pelas políticas RLS ao consultar subscription_events.";
+    case "signature":
+      return "Tabela subscription_events indisponível — a edge function Kiwify nunca registrou eventos (assinatura provavelmente rejeitada).";
+    case "auth":
+      return "Sessão Supabase ausente ou expirada.";
+    default:
+      return "Erro desconhecido ao validar o webhook Kiwify.";
+  }
 }
 
 export function useLiveChatGuard(): LiveChatGuardState {
@@ -42,6 +124,9 @@ export function useLiveChatGuard(): LiveChatGuardState {
     reason: null,
     attempts: 0,
     exhausted: false,
+    failureKind: "none",
+    lastErrorDetail: null,
+    lastErrorCode: null,
   });
 
   const cancelledRef = useRef(false);
@@ -70,14 +155,19 @@ export function useLiveChatGuard(): LiveChatGuardState {
       attemptsRef.current += 1;
       const attempt = attemptsRef.current;
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const session = sessionData.session;
-
-      if (cancelledRef.current) return;
-
-      const exhausted = attempt >= MAX_REVALIDATIONS;
-
-      if (!session?.user) {
+      let session;
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        session = sessionData.session;
+      } catch (e) {
+        const info = classifyError(e);
+        console.warn(
+          `[useLiveChatGuard] tentativa ${attempt}/${MAX_REVALIDATIONS} — falha em getSession (${info.kind}):`,
+          info.detail,
+          info.code ? `code=${info.code}` : "",
+        );
+        if (cancelledRef.current) return;
+        const exhausted = attempt >= MAX_REVALIDATIONS;
         setState({
           loading: false,
           authenticated: false,
@@ -85,6 +175,33 @@ export function useLiveChatGuard(): LiveChatGuardState {
           enabled: false,
           attempts: attempt,
           exhausted,
+          failureKind: info.kind,
+          lastErrorDetail: info.detail,
+          lastErrorCode: info.code,
+          reason: `${describeFailure(info.kind)} Detalhe: ${info.detail}`,
+        });
+        if (!exhausted) scheduleNext();
+        return;
+      }
+
+      if (cancelledRef.current) return;
+
+      const exhausted = attempt >= MAX_REVALIDATIONS;
+
+      if (!session?.user) {
+        console.warn(
+          `[useLiveChatGuard] tentativa ${attempt}/${MAX_REVALIDATIONS} — sem sessão autenticada.`,
+        );
+        setState({
+          loading: false,
+          authenticated: false,
+          webhookVerified: false,
+          enabled: false,
+          attempts: attempt,
+          exhausted,
+          failureKind: "auth",
+          lastErrorDetail: "Sessão Supabase ausente.",
+          lastErrorCode: null,
           reason: "Sessão não autenticada. Faça login para usar o Bate Papo ao Vivo.",
         });
         if (!exhausted) scheduleNext();
@@ -99,7 +216,12 @@ export function useLiveChatGuard(): LiveChatGuardState {
       if (cancelledRef.current) return;
 
       if (error) {
+        const info = classifyError(error);
         const nextSec = Math.round(nextDelay(attempt) / 1000);
+        console.warn(
+          `[useLiveChatGuard] tentativa ${attempt}/${MAX_REVALIDATIONS} — falha ao consultar subscription_events (${info.kind})`,
+          { code: info.code, detail: info.detail, raw: error },
+        );
         setState({
           loading: false,
           authenticated: true,
@@ -107,9 +229,12 @@ export function useLiveChatGuard(): LiveChatGuardState {
           enabled: false,
           attempts: attempt,
           exhausted,
+          failureKind: info.kind,
+          lastErrorDetail: info.detail,
+          lastErrorCode: info.code,
           reason: exhausted
-            ? `Não foi possível validar o webhook Kiwify após ${MAX_REVALIDATIONS} tentativas. Recarregue a página para tentar novamente.`
-            : `Não foi possível validar o webhook Kiwify (acesso negado ou erro de rede). Nova tentativa em ${nextSec}s.`,
+            ? `${describeFailure(info.kind)} Após ${MAX_REVALIDATIONS} tentativas. Detalhe: ${info.detail}${info.code ? ` (code=${info.code})` : ""}.`
+            : `${describeFailure(info.kind)} Nova tentativa em ${nextSec}s. Detalhe: ${info.detail}${info.code ? ` (code=${info.code})` : ""}.`,
         });
         if (!exhausted) scheduleNext();
         return;
@@ -117,6 +242,17 @@ export function useLiveChatGuard(): LiveChatGuardState {
 
       const verified = (count ?? 0) > 0;
       const nextSec = Math.round(nextDelay(attempt) / 1000);
+
+      if (verified) {
+        console.info(
+          `[useLiveChatGuard] webhook Kiwify confirmado na tentativa ${attempt} (eventos=${count}).`,
+        );
+      } else {
+        console.info(
+          `[useLiveChatGuard] tentativa ${attempt}/${MAX_REVALIDATIONS} — nenhum evento Kiwify ainda (assinatura x-kiwify-signature pode não ter chegado).`,
+        );
+      }
+
       setState({
         loading: false,
         authenticated: true,
@@ -124,11 +260,16 @@ export function useLiveChatGuard(): LiveChatGuardState {
         enabled: verified,
         attempts: attempt,
         exhausted: !verified && exhausted,
+        failureKind: verified ? "none" : "signature",
+        lastErrorDetail: verified
+          ? null
+          : "Nenhum evento em subscription_events com source='kiwify'. A edge function só insere após validar x-kiwify-signature.",
+        lastErrorCode: null,
         reason: verified
           ? null
           : exhausted
-            ? `Webhook Kiwify não foi confirmado após ${MAX_REVALIDATIONS} tentativas. Verifique a configuração da Kiwify e recarregue a página.`
-            : `Aguardando confirmação do webhook Kiwify (tentativa ${attempt}/${MAX_REVALIDATIONS}). Próxima verificação em ${nextSec}s (backoff exponencial)...`,
+            ? `Webhook Kiwify não foi confirmado após ${MAX_REVALIDATIONS} tentativas. Verifique se a Kiwify está enviando o header x-kiwify-signature correto e se a edge function está respondendo 200.`
+            : `Aguardando confirmação do webhook Kiwify (tentativa ${attempt}/${MAX_REVALIDATIONS}). Próxima verificação em ${nextSec}s (backoff exponencial). Causa provável: header x-kiwify-signature ainda não validado.`,
       });
 
       if (verified) {
