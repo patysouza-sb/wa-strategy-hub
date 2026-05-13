@@ -53,10 +53,7 @@ export default function MySubscription() {
     if (!confirm("Tem certeza que deseja cancelar sua assinatura? Você manterá o acesso até o fim do período atual."))
       return;
     setCancelling(true);
-    const { error } = await supabase
-      .from("subscriptions")
-      .update({ status: "cancelled" })
-      .eq("id", subscription.id);
+    const { error } = await supabase.rpc("cancel_my_subscription");
     setCancelling(false);
     if (error) {
       toast.error("Erro ao cancelar assinatura");
