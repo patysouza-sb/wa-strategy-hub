@@ -2401,6 +2401,7 @@ export type Database = {
       }
     }
     Functions: {
+      cancel_my_subscription: { Args: never; Returns: undefined }
       current_tenant_id: { Args: never; Returns: string }
       current_user_department_id: { Args: never; Returns: string }
       current_user_is_admin: { Args: never; Returns: boolean }
