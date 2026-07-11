@@ -128,6 +128,17 @@ export default function PlansExpired() {
             </Link>
           </div>
         )}
+
+        <div className="text-center mt-6">
+          <Button
+            variant="ghost"
+            onClick={handleSignOut}
+            className="text-white hover:bg-white/10 hover:text-white"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sair / Trocar de conta
+          </Button>
+        </div>
       </div>
     </div>
   );
