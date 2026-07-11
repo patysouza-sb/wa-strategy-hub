@@ -28,8 +28,9 @@ const ICONS: Record<string, JSX.Element> = {
 export default function PlansExpired() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const { subscription, isExpired, isActive } = useSubscription();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const navigate = useNavigate();
+  const owner = isOwner(user?.email);
 
   const handleSignOut = async () => {
     await signOut();
