@@ -27,6 +27,13 @@ const ICONS: Record<string, JSX.Element> = {
 export default function PlansExpired() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const { subscription, isExpired, isActive } = useSubscription();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login", { replace: true });
+  };
 
   useEffect(() => {
     supabase
