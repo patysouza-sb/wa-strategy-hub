@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Check, Crown, Zap, Building2, LogOut } from "lucide-react";
+import { Check, Crown, Zap, Building2, LogOut, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/contexts/AuthContext";
+import { isOwner } from "@/lib/owner";
 
 interface Plan {
   id: string;
@@ -27,8 +28,9 @@ const ICONS: Record<string, JSX.Element> = {
 export default function PlansExpired() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const { subscription, isExpired, isActive } = useSubscription();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const navigate = useNavigate();
+  const owner = isOwner(user?.email);
 
   const handleSignOut = async () => {
     await signOut();
@@ -66,6 +68,20 @@ export default function PlansExpired() {
             </p>
           )}
         </div>
+
+        {owner && (
+          <div className="flex justify-center mb-8">
+            <Button
+              onClick={() => navigate("/", { replace: true })}
+              className="bg-white text-[#6C3FC5] hover:bg-white/90 font-semibold shadow-lg h-11 px-6"
+            >
+              <ShieldCheck className="w-4 h-4 mr-2" />
+              Entrar como Criador (Owner)
+            </Button>
+          </div>
+        )}
+
+
 
         <div className="grid md:grid-cols-3 gap-6">
           {plans.map((plan) => (

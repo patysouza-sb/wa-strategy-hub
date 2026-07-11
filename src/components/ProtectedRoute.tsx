@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
+import { isOwner } from "@/lib/owner";
 
 export function ProtectedRoute({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -19,6 +20,11 @@ export function ProtectedRoute({ children }: { children: JSX.Element }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Owner bypass — dono do projeto sempre entra.
+  if (isOwner(user.email)) {
+    return children;
+  }
+
   // Bloqueio automático ao expirar
   if (!sub.isActive && location.pathname !== "/plans") {
     return <Navigate to="/plans" replace />;
@@ -26,3 +32,4 @@ export function ProtectedRoute({ children }: { children: JSX.Element }) {
 
   return children;
 }
+
