@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { Check, Crown, Zap, Building2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Check, Crown, Zap, Building2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Plan {
   id: string;
@@ -26,6 +27,13 @@ const ICONS: Record<string, JSX.Element> = {
 export default function PlansExpired() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const { subscription, isExpired, isActive } = useSubscription();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login", { replace: true });
+  };
 
   useEffect(() => {
     supabase
@@ -120,6 +128,17 @@ export default function PlansExpired() {
             </Link>
           </div>
         )}
+
+        <div className="text-center mt-6">
+          <Button
+            variant="ghost"
+            onClick={handleSignOut}
+            className="text-white hover:bg-white/10 hover:text-white"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sair / Trocar de conta
+          </Button>
+        </div>
       </div>
     </div>
   );
