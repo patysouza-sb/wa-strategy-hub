@@ -69,6 +69,20 @@ export default function PlansExpired() {
           )}
         </div>
 
+        {owner && (
+          <div className="flex justify-center mb-8">
+            <Button
+              onClick={() => navigate("/", { replace: true })}
+              className="bg-white text-[#6C3FC5] hover:bg-white/90 font-semibold shadow-lg h-11 px-6"
+            >
+              <ShieldCheck className="w-4 h-4 mr-2" />
+              Entrar como Criador (Owner)
+            </Button>
+          </div>
+        )}
+
+
+
         <div className="grid md:grid-cols-3 gap-6">
           {plans.map((plan) => (
             <Card
